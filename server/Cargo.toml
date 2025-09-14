@@ -1,0 +1,16 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aes-gcm = "0.10.3"
+bincode = "2.0.1"
+eframe = "0.32.3"
+egui = "0.32.3"
+egui-notify = "0.20.0"
+egui_extras = "0.32.3"
+hex = "0.4.3"
+rfd = "0.15.4"
+shared = { path = "../shared" }
+tokio = { version = "1.47.1", features= ["full"] }
