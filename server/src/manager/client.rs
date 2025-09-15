@@ -1,15 +1,17 @@
 use crate::{net, types::WhitelistedClient};
 
 use tokio::{
-    io::AsyncReadExt,
+    io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
-use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
+use tokio_util::compat::{
+    FuturesAsyncWriteCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
+};
 
 pub enum ClientCommand {
-    Write(String, Vec<u8>),
+    Write(Vec<u8>),
 }
 pub enum ClientResponse {
     Read(String, Vec<u8>),
@@ -51,7 +53,15 @@ pub async fn task(
                 }
             }
             // from TcpStream, read in payload size and then read the actual payload into a buffer based on the size
-            manager_read = mouthpiece.from_manager.recv() => {}
+            manager_read = mouthpiece.from_manager.recv() => {
+                if let Some(command) = manager_read {
+                    match command {
+                        ClientCommand::Write(buf) => {
+                            let _ = shared::net::write(&mut write, &buf).await;
+                        }
+                    }
+                }
+            }
         }
     }
 }

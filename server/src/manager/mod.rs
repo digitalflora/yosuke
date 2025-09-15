@@ -59,6 +59,15 @@ impl ClientManager {
                             let response = String::from_utf8_lossy(&buf);
                             println!("[*][{}] sent data", mutex);
                             println!("{}", response);
+
+                            if let Some(client) = self.clients.get(&mutex) {
+                                let _ = client.sender.send(
+                                    ClientCommand::Write(
+                                        b"OK".to_vec()
+                                    )
+                                );
+                            }
+
                         }
                     }
                 }
