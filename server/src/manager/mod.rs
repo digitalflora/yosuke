@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 
+use aes_gcm::aead::generic_array::GenericArray;
+use shared::crypto::Encryption;
 use tokio::{
     net::TcpStream,
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender, unbounded_channel},
-    task::JoinHandle,
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
 };
 
 use crate::{
-    manager::client::{
-        Client, ClientCommand, ClientMouthpiece, ClientPassthroughMouthpiece, ClientResponse,
-    },
+    manager::client::{Client, ClientCommand, ClientPassthroughMouthpiece, ClientResponse},
     types::WhitelistedClient,
 };
 
@@ -83,7 +82,7 @@ impl ClientManager {
                         ServerManagerMessage::ClearClients => {
                             println!("[*] clearing clients");
                             for (_, client) in self.clients.iter() {
-                                println!("[*] aborting task {}", client.whitelisted.mutex);
+                                println!("[*] aborting task {}", client.mutex);
                                 client.handle.abort();
                             }
                             self.clients.clear();
@@ -101,11 +100,12 @@ impl ClientManager {
                                 let mutex = whitelisted.mutex.clone();
                                 let task_mutex = mutex.clone();
                                 let to_manager = self.mouthpiece.client.to_manager.clone();
+                                let encryption = Encryption::new(GenericArray::from_slice(&whitelisted.key));
                                 let client = Client {
-                                    whitelisted: whitelisted,
+                                    mutex: mutex.clone(),
                                     sender: to_client, // no mouthpiece needed because we clone to_manager,
                                     handle: tokio::spawn(async move {
-                                        client::task(task_mutex, stream, ClientPassthroughMouthpiece {
+                                        client::task(task_mutex, encryption, stream, ClientPassthroughMouthpiece {
                                             to_manager: to_manager,
                                             from_manager: from_manager
                                         }).await;

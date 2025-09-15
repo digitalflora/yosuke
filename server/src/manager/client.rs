@@ -1,14 +1,10 @@
-use crate::{net, types::WhitelistedClient};
-
+use shared::crypto::Encryption;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
-use tokio_util::compat::{
-    FuturesAsyncWriteCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
-};
+use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 pub enum ClientCommand {
     Write(Vec<u8>),
@@ -21,7 +17,7 @@ pub struct ClientMouthpiece {
     pub from_client: UnboundedReceiver<ClientResponse>,
 }
 pub struct Client {
-    pub whitelisted: WhitelistedClient, // has the key for encryption in it!,
+    pub mutex: String,
     pub sender: UnboundedSender<ClientCommand>,
     pub handle: JoinHandle<()>, // tokio::task per client
 }
@@ -32,7 +28,8 @@ pub struct ClientPassthroughMouthpiece {
 
 pub async fn task(
     mutex: String,
-    mut stream: TcpStream,
+    encryption: Encryption,
+    stream: TcpStream,
     mut mouthpiece: ClientPassthroughMouthpiece,
 ) {
     println!("[v] client task! read loop should go here");
@@ -47,7 +44,15 @@ pub async fn task(
                 match stream_read {
                     Ok(buf) => {
                         println!("[*] received data from a client");
-                        let _ = mouthpiece.to_manager.send(ClientResponse::Read(mutex.clone(), buf));
+
+                        let mut nonce = [0u8; 12];
+                        nonce.copy_from_slice(&buf[..12]);
+                        let buffer = &buf[12..];
+                        if let Ok(decrypted) = encryption.decrypt(&nonce, buffer) {
+                            let _ = mouthpiece.to_manager.send(ClientResponse::Read(mutex.clone(), decrypted));
+                        } else {
+                            println!("decryption failed!! wtf");
+                        }
                     },
                     Err(_e) => {}
                 }
@@ -57,7 +62,16 @@ pub async fn task(
                 if let Some(command) = manager_read {
                     match command {
                         ClientCommand::Write(buf) => {
-                            let _ = shared::net::write(&mut write, &buf).await;
+                            if let Ok((nonce, encrypted)) = encryption.encrypt(&buf)
+                            {
+                                let mut payload = Vec::new();
+                                payload.extend_from_slice(&nonce);
+                                payload.extend_from_slice(&encrypted);
+
+                                let _ = shared::net::write(&mut write, &payload).await;
+                            } else {
+                                println!("[x] failed to write to client");
+                            }
                         }
                     }
                 }

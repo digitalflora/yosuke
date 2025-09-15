@@ -11,6 +11,7 @@ use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
+use shared::crypto::Encryption;
 use shared::types::ClientConfig;
 use smol::{
     //Executor,
@@ -101,7 +102,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[*] sending payload!");
         stream.write_all(payload).await?;
 
-        match wait(stream).await {
+        let encryption = Encryption::new(_key);
+
+        match wait(stream, encryption).await {
             Ok(_) => {
                 println!("loop exited gracefully");
             }
@@ -116,15 +119,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
 }
 
-async fn wait(mut stream: TcpStream) -> Result<(), std::io::Error> {
+async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::io::Error> {
     println!("[*][wait()] entered loop");
 
     loop {
         match shared::net::read(&mut stream).await {
             Ok(buf) => {
                 println!("[*] got sum shit from the server");
-                let response = String::from_utf8_lossy(&buf);
-                println!("{}", response);
+
+                let mut nonce = [0u8; 12];
+                nonce.copy_from_slice(&buf[..12]);
+                let buffer = &buf[12..];
+                if let Ok(decrypted) = encryption.decrypt(&nonce, buffer) {
+                    println!("decrypted: {}", String::from_utf8_lossy(&decrypted));
+                } else {
+                    println!("decryption failed!! wtf");
+                }
             }
             Err(e) => {
                 println!("[x] {}", e);
