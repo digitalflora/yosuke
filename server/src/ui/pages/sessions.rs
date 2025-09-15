@@ -1,5 +1,7 @@
 use crate::ui::view::View;
-use egui::{Align, Color32, Frame, Layout, RichText, ScrollArea, TextStyle, Ui, vec2};
+use egui::{
+    Align, Color32, Frame, Label, Layout, RichText, ScrollArea, Sense, TextStyle, Ui, vec2,
+};
 use egui_extras::{Column, TableBuilder};
 
 pub fn render(view: &mut View, ui: &mut Ui) -> () {
@@ -42,7 +44,18 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
             });
         })
         .body(|mut body| {
-            // add columns for each session
+            for (_i, client) in view.state.clients.iter_mut().enumerate() {
+                body.row(24.0, |mut row| {
+                    row.col(|ui| {
+                        if ui.add(Label::new(client.0).sense(Sense::click())).clicked() {
+                            client.1.state.visible = !client.1.state.visible
+                        }
+                    });
+                    row.col(|ui| {
+                        ui.label(&client.1.info.hostname);
+                    });
+                });
+            }
         });
 
     ui.with_layout(Layout::top_down(Align::Min), |ui| {

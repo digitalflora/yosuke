@@ -1,7 +1,9 @@
-use shared::commands::Response;
+use shared::commands::{ComputerInfoResponse, Response};
 use winsafe::GetComputerName;
 
-pub async fn main() -> Result<Response, Box<dyn std::error::Error>> {
+pub fn main() -> Result<Response, Box<dyn std::error::Error>> {
     let hostname = GetComputerName()?;
-    Ok(Response::ComputerInfo { hostname })
+    Ok(Response::ComputerInfo(ComputerInfoResponse {
+        hostname: hostname,
+    }))
 }

@@ -3,6 +3,7 @@ use egui::ViewportBuilder;
 
 use crate::types::mouthpieces::UiMouthpiece;
 
+mod client;
 mod pages;
 mod switcher;
 mod updates;

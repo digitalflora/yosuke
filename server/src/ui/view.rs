@@ -1,10 +1,15 @@
+use std::collections::HashMap;
+
 use eframe::{App, Frame};
 use egui::{CentralPanel, Context};
 use egui_notify::Toasts;
 
 use crate::{
     types::mouthpieces::UiMouthpiece,
-    ui::{pages, switcher, updates},
+    ui::{
+        client::{self, ClientView},
+        pages, switcher, updates,
+    },
 };
 
 pub struct ViewBuilderSettings {
@@ -17,6 +22,7 @@ pub enum ViewPage {
 }
 pub struct ViewState {
     pub notifications: Toasts,
+    pub clients: HashMap<String, ClientView>,
     pub page: ViewPage,
     pub logs: ViewLogs,
     pub builder: ViewBuilderSettings,
@@ -26,6 +32,7 @@ impl ViewState {
     pub fn new() -> Self {
         Self {
             notifications: Toasts::default(),
+            clients: HashMap::new(),
             page: ViewPage::Sessions,
             logs: ViewLogs {
                 server: Vec::new(),
@@ -68,6 +75,12 @@ impl App for View {
         updates::manager(self, ctx);
 
         switcher::render(self, ctx);
+
+        for (_index, client) in self.state.clients.iter_mut().enumerate() {
+            if client.1.state.visible {
+                client::render(ctx, client.1);
+            }
+        }
 
         CentralPanel::default().show(ctx, |ui| match &self.state.page {
             ViewPage::Sessions => {

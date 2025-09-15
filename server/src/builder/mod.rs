@@ -1,14 +1,10 @@
 use crate::{
     SettingsPointer, settings,
-    types::{
-        BuilderMessage, UiBuilderMessage,
-        mouthpieces::{self, BuilderMouthpiece},
-    },
+    types::{UiBuilderMessage, mouthpieces::BuilderMouthpiece},
 };
 use aes_gcm::aead::rand_core::{self, RngCore};
 use rfd::FileDialog;
 use shared::types::ClientConfig;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 mod build;
 
@@ -25,14 +21,15 @@ pub fn running_dir() -> std::path::PathBuf {
         .to_path_buf()
 }
 
-pub async fn main(mut settings: SettingsPointer, mut mouthpiece: BuilderMouthpiece) {
+pub async fn main(settings: SettingsPointer, mut mouthpiece: BuilderMouthpiece) {
     println!("[*] builder spawned");
     while let Some(command) = mouthpiece.from_ui.recv().await {
         match command {
             UiBuilderMessage::Build(builder_settings) => {
                 println!("[*] generating mutex");
+                let mutex = mutex().unwrap();
                 let config = ClientConfig {
-                    mutex: mutex().unwrap(),
+                    mutex: mutex,
                     address: builder_settings.address,
                     port: builder_settings.port,
                 };
@@ -49,6 +46,7 @@ pub async fn main(mut settings: SettingsPointer, mut mouthpiece: BuilderMouthpie
                         Ok(client) => {
                             let mut _settings = settings.lock().await;
                             _settings.whitelist.push(client);
+                            println!("[*] added mutex {} to whitelist", hex::encode(mutex));
                             match settings::save(&*_settings).await {
                                 Ok(_) => {
                                     println!("[*] settings saved");

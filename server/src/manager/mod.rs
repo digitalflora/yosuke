@@ -1,37 +1,18 @@
 use std::collections::HashMap;
 
 use aes_gcm::aead::generic_array::GenericArray;
-use shared::crypto::Encryption;
-use tokio::{
-    net::TcpStream,
-    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+use shared::{
+    commands::{BaseCommand, BaseResponse},
+    crypto::Encryption,
 };
+use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
     manager::client::{Client, ClientCommand, ClientPassthroughMouthpiece, ClientResponse},
-    types::WhitelistedClient,
+    manager::types::*,
 };
 
-pub enum UiManagerCommand {}
-pub enum UiManagerResponse {}
-pub enum ServerManagerMessage {
-    ClearClients,
-    ClientConnect(WhitelistedClient, TcpStream),
-    ClientDisconnect(String),
-}
-// pub enum ServerManagerResponse {}
-
-pub struct SharedClientMouthpiece {
-    pub from_client: UnboundedReceiver<ClientResponse>,
-    pub to_manager: UnboundedSender<ClientResponse>, // clonable
-}
-
-pub struct ClientManagerMouthpiece {
-    pub from_ui: UnboundedReceiver<UiManagerCommand>,
-    pub to_ui: UnboundedSender<UiManagerResponse>,
-    pub from_server: UnboundedReceiver<ServerManagerMessage>,
-    pub client: SharedClientMouthpiece,
-}
+pub mod types;
 
 //////////////
 pub mod client;
@@ -57,23 +38,41 @@ impl ClientManager {
                 Some(client_command) = self.mouthpiece.client.from_client.recv() => {
                     match client_command {
                         ClientResponse::Read(mutex, buf) => {
-                            let response = String::from_utf8_lossy(&buf);
+                            let (response, _size): (BaseResponse, usize) = bincode::decode_from_slice(&buf, bincode::config::standard()).unwrap();
                             println!("[*][{}] sent data", mutex);
-                            println!("{}", response);
-
-                            if let Some(client) = self.clients.get(&mutex) {
-                                let _ = client.sender.send(
-                                    ClientCommand::Write(
-                                        b"OK".to_vec()
-                                    )
-                                );
-                            }
-
+                            // pass to UI?
+                            let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, response.response));
+                        },
+                        ClientResponse::Disconnect(mutex) => {
+                            println!("[*][{}] disconnected", mutex);
+                            self.clients.remove(&mutex);
+                            let _ = self.mouthpiece.to_ui.send(UiManagerResponse::Remove(mutex));
                         }
                     }
                 }
                 Some(ui_command) = self.mouthpiece.from_ui.recv() => {
                     println!("[*] received command from ui");
+                    match ui_command {
+                        UiManagerCommand::SendCommand(mutex, command) => {
+                            if let Some(client) = self.clients.get_mut(&mutex) {
+                                if let Err(_e) = client.sender.send(ClientCommand::Write(
+                                    bincode::encode_to_vec(BaseCommand {
+                                        id: client.counter,
+                                        command: command
+                                    }, bincode::config::standard()).unwrap()
+                                )) {
+                                    println!("[*][manager] failed to send command to client");
+                                } else { client.counter += 1; };
+                            }
+                        },
+                        UiManagerCommand::Disconnect(mutex) => {
+                            if let Some(client) = self.clients.get_mut(&mutex) {
+                                client.handle.abort();
+                                self.clients.remove(&mutex);
+                                let _ = self.mouthpiece.to_ui.send(UiManagerResponse::Remove(mutex));
+                            }
+                        }
+                    }
                     // self.mouthpiece.to_ui.send(UiManagerResponse::...);
                 },
                 Some(server_command) = self.mouthpiece.from_server.recv() => {
@@ -86,12 +85,14 @@ impl ClientManager {
                                 client.handle.abort();
                             }
                             self.clients.clear();
+                            let _ = self.mouthpiece.to_ui.send(UiManagerResponse::RemoveAll);
                         },
                         ServerManagerMessage::ClientDisconnect(mutex) => {
                             if let Some(client) = self.clients.get(&mutex) {
                                 println!("[*] aborting task {}", mutex);
                                 client.handle.abort();
                                 self.clients.remove(&mutex);
+                                let _ = self.mouthpiece.to_ui.send(UiManagerResponse::Remove(mutex));
                             }
                         }
                         ServerManagerMessage::ClientConnect(whitelisted, stream) => {
@@ -103,12 +104,15 @@ impl ClientManager {
                                 let encryption = Encryption::new(GenericArray::from_slice(&whitelisted.key));
                                 let client = Client {
                                     mutex: mutex.clone(),
+                                    counter: 1, // 0 is reserved for computer info
                                     sender: to_client, // no mouthpiece needed because we clone to_manager,
                                     handle: tokio::spawn(async move {
-                                        client::task(task_mutex, encryption, stream, ClientPassthroughMouthpiece {
+                                        if let Err(err) = client::task(task_mutex, encryption, stream, ClientPassthroughMouthpiece {
                                             to_manager: to_manager,
                                             from_manager: from_manager
-                                        }).await;
+                                        }).await {
+                                            println!("[x][manager] {:?}", err);
+                                        };
                                     })
                                 };
                                 self.clients.insert(mutex, client);

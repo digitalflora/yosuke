@@ -5,7 +5,7 @@ pub async fn read<R>(reader: &mut R) -> std::io::Result<Vec<u8>>
 where
     R: AsyncRead + Unpin,
 {
-    println!("waiting to read!");
+    // println!("waiting to read!");
     let mut len_buf = [0u8; size_of::<usize>()];
     reader.read_exact(&mut len_buf).await?;
     println!("got length of payload");

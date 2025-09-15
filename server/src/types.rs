@@ -47,7 +47,7 @@ pub mod mouthpieces {
     use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
     use crate::{
-        manager::{ServerManagerMessage, UiManagerCommand, UiManagerResponse},
+        manager::types::*,
         types::{BuilderMessage, ServerMessage, UiBuilderMessage, UiMessage},
     };
 

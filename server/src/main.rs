@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    manager::{
-        ClientManager, ClientManagerMouthpiece, ServerManagerMessage, SharedClientMouthpiece,
-        UiManagerCommand, UiManagerResponse, client::ClientResponse,
-    },
+    manager::{ClientManager, client::ClientResponse, types::*},
     types::{
         mouthpieces::{BuilderMouthpiece, ServerMouthpiece, UiMouthpiece},
         *,
@@ -36,12 +33,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (ui_to_manager, manager_from_ui) = unbounded_channel::<UiManagerCommand>();
     let (manager_to_ui, ui_from_manager) = unbounded_channel::<UiManagerResponse>();
     let (server_to_manager, manager_from_server) = unbounded_channel::<ServerManagerMessage>();
-    //let (manager_to_server, server_from_manager) = unbounded_channel::<ServerManagerResponse>();
+
     let (client_to_manager /* you can clone this */, manager_from_client) =
         unbounded_channel::<ClientResponse>();
 
     tokio::spawn(async move {
-        let mut manager: ClientManager = ClientManager::new(ClientManagerMouthpiece {
+        let manager: ClientManager = ClientManager::new(ClientManagerMouthpiece {
             from_ui: manager_from_ui,
             to_ui: manager_to_ui,
             from_server: manager_from_server,
@@ -68,7 +65,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("[x][main()->listen()] {}", e);
         }
     }); // server thread
-    // to_server.send(UiMessage::Listen)?; // tell server to start listening!
 
     settings_pointer = settings.clone();
     tokio::spawn(async move {
