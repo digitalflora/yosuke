@@ -39,6 +39,9 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
             header.col(|ui| {
                 ui.strong("Hostname");
             });
+            header.col(|ui| {
+                ui.strong("Socket");
+            });
         })
         .body(|mut body| {
             for (_i, client) in view.state.clients.iter_mut().enumerate() {
@@ -50,6 +53,9 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
                     });
                     row.col(|ui| {
                         ui.label(&client.1.info.hostname);
+                    });
+                    row.col(|ui| {
+                        ui.label(&client.1.socket);
                     });
                 });
             }

@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use egui::ColorImage;
 use shared::commands::{Command, ComputerInfoResponse};
 use tokio::{
@@ -10,7 +12,7 @@ use crate::{manager::client::ClientResponse, types::WhitelistedClient};
 pub enum ProcessedResponse {
     Success,
     Error(String),
-    ComputerInfo(ComputerInfoResponse),
+    ComputerInfo(ComputerInfoResponse, SocketAddr),
     // actually processed:
     Screenshot(ColorImage),
 }

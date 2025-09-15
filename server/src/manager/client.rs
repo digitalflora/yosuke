@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use shared::crypto::Encryption;
 use tokio::{
     net::TcpStream,
@@ -16,6 +18,7 @@ pub enum ClientResponse {
 pub struct Client {
     pub mutex: String,
     pub counter: u64,
+    pub socket: SocketAddr,
     pub sender: UnboundedSender<ClientCommand>,
     pub handle: JoinHandle<()>, // tokio::task per client
 }

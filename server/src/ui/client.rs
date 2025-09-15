@@ -1,5 +1,7 @@
 use crate::manager::types::UiManagerCommand;
-use egui::{CollapsingHeader, Color32, ColorImage, Context, Frame, Image, Margin, Stroke, Window};
+use egui::{
+    CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, Stroke, Window,
+};
 use shared::commands::{Command, ComputerInfoResponse, MessageBoxArgs};
 use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
@@ -27,18 +29,20 @@ pub struct ClientViewState {
 pub struct ClientView {
     pub mutex: String,
     pub state: ClientViewState,
-    //  pub socket: String, // socket
+    pub socket: String,
     pub info: ComputerInfoResponse,
     sender: UnboundedSender<UiManagerCommand>,
 }
 impl ClientView {
     pub fn new(
-        /*socket: String,*/ mutex: String,
+        socket: String,
+        mutex: String,
         info: ComputerInfoResponse,
         sender: UnboundedSender<UiManagerCommand>,
     ) -> Self {
         Self {
             mutex: mutex,
+            socket: socket,
             state: ClientViewState {
                 visible: false,
 
@@ -57,6 +61,7 @@ impl ClientView {
 
 pub fn render(ctx: &Context, view: &mut ClientView) {
     Window::new(view.info.hostname.clone())
+        .id(Id::new(&view.mutex)) // rely on the mutex in case connected devices share a hostname (for whatever reason)
         .open(&mut view.state.visible)
         .resizable(true)
         .show(ctx, |ui| {

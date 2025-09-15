@@ -40,7 +40,7 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                     ProcessedResponse::Success => {
                         println!("[v] yay shit just works");
                     }
-                    ProcessedResponse::ComputerInfo(info) => {
+                    ProcessedResponse::ComputerInfo(info, socket) => {
                         if view.state.clients.contains_key(&mutex) {
                             // we already have info on this client
                             println!("[*] already got you");
@@ -48,7 +48,12 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                             println!("[*] new client to show on screen");
                             view.state.clients.insert(
                                 mutex.clone(),
-                                ClientView::new(mutex, info, view.mouthpiece.to_manager.clone()),
+                                ClientView::new(
+                                    socket.to_string(),
+                                    mutex,
+                                    info,
+                                    view.mouthpiece.to_manager.clone(),
+                                ),
                             );
                             println!("{}", view.state.clients.len());
                         }

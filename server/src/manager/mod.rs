@@ -67,7 +67,11 @@ impl ClientManager {
 
                                 },
                                 Response::ComputerInfo(info) => {
-                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::ComputerInfo(info)));
+                                    let socket = self.clients.get(&mutex).unwrap().socket.clone(); // pray
+                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::ComputerInfo(
+                                        info,
+                                        socket
+                                    )));
                                 },
                                 // _ => {}
                             }
@@ -133,8 +137,11 @@ impl ClientManager {
                                 let task_mutex = mutex.clone();
                                 let to_manager = self.mouthpiece.client.to_manager.clone();
                                 let encryption = Encryption::new(GenericArray::from_slice(&whitelisted.key));
+                                let socket = stream.peer_addr().unwrap();
+
                                 let client = Client {
                                     mutex: mutex.clone(),
+                                    socket: socket,
                                     counter: 1, // 0 is reserved for computer info
                                     sender: to_client, // no mouthpiece needed because we clone to_manager,
                                     handle: tokio::spawn(async move {
