@@ -54,10 +54,12 @@ pub async fn task(
                             println!("decryption failed!! wtf");
                         }
                     },
-                    Err(_e) => {}
+                    Err(_e) => {
+                        println!("[x] error reading data from client: {}", _e);
+                    }
                 }
             }
-            // from TcpStream, read in payload size and then read the actual payload into a buffer based on the size
+
             manager_read = mouthpiece.from_manager.recv() => {
                 if let Some(command) = manager_read {
                     match command {
