@@ -16,6 +16,7 @@ pub async fn main(
     loop {
         tokio::select! {
             msg = mouthpiece.from_ui.recv() => {
+                println!("[*] server got a message from the ui");
                 match msg {
                     Some(UiMessage::Listen) => {
                         match TcpListener::bind("0.0.0.0:5317").await {
@@ -28,6 +29,7 @@ pub async fn main(
                         }
                     }
                     Some(UiMessage::Shutdown) => {
+                        println!("[*][listen()] stop listening...");
                         mouthpiece.to_manager.send(ServerManagerMessage::ClearClients)?;
                         listener = None;
                         mouthpiece.to_ui.send(ServerMessage::Stopped)?;
