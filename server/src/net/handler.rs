@@ -1,25 +1,21 @@
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{
-        TcpStream,
-        tcp::{ReadHalf, WriteHalf},
-    },
+    net::TcpStream,
     sync::mpsc::UnboundedSender,
 };
 
 use crate::{
     SettingsPointer,
-    types::{ServerMessage, StreamPointer, WhitelistedClient},
+    manager::ServerManagerMessage,
+    manager::client::Client,
+    types::{ServerMessage, WhitelistedClient},
 };
 
 pub async fn handshake(
-    mut stream_pointer: StreamPointer,
-    mut settings: SettingsPointer,
-    mut mouthpiece: &UnboundedSender<ServerMessage>,
+    stream: &mut TcpStream,
+    mut settings: &SettingsPointer,
 ) -> Result<WhitelistedClient, std::io::Error> {
     // what do i do here...?
-
-    let mut stream = stream_pointer.lock().await;
 
     println!("[*][handle()] waiting for handshake");
     let mut handshake_buf = [0u8; 5];
@@ -41,6 +37,7 @@ pub async fn handshake(
         if let Some(client) = whitelist.iter().cloned().find(|c| c.mutex == mutex) {
             println!("[v][handle()] mutex is whitelisted!");
             return Ok(client);
+
             /*match client_loop(reader, writer).await {
                 Ok(()) => println!("[*][client_loop()] loop closed"),
                 Err(error) => eprintln!("[x][client_loop()] {}", error),
@@ -49,26 +46,5 @@ pub async fn handshake(
             println!("[x][handle()] mutex is not whitelisted");
             return Err(std::io::ErrorKind::PermissionDenied.into());
         }
-    }
-}
-
-pub async fn wait(mut stream_pointer: StreamPointer) -> Result<(), std::io::Error> {
-    println!("[*][client_loop()] entered loop");
-
-    let mut stream = stream_pointer.lock().await;
-    let (mut reader, mut writer) = stream.split();
-
-    loop {
-        let mut size_buf = [0u8; size_of::<usize>()];
-        reader.read_exact(&mut size_buf).await?;
-        let size = usize::from_le_bytes(size_buf);
-        println!("[*] ready for payload (size: {})", size);
-
-        let mut payload = vec![0u8; size];
-        reader.read_exact(&mut payload).await?;
-        println!("[v] payload received!!");
-
-        let readable_payload = String::from_utf8_lossy(&payload);
-        println!("{}", readable_payload);
     }
 }

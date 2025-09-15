@@ -1,15 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
-
 use bincode::{Decode, Encode};
-use tokio::{net::TcpStream, sync::Mutex};
-
-pub type StreamCollectionPointer = Arc<Mutex<HashMap<String, StreamPointerContainer>>>;
-#[derive(Clone)]
-pub struct StreamPointerContainer {
-    pub stream: StreamPointer,
-    pub client: WhitelistedClient,
-}
-pub type StreamPointer = Arc<Mutex<TcpStream>>;
 
 #[derive(Encode, Decode)]
 pub struct Settings {
@@ -60,7 +49,10 @@ pub enum BuilderMessage {
 pub mod mouthpieces {
     use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-    use crate::types::{BuilderMessage, ServerMessage, UiBuilderMessage, UiMessage};
+    use crate::{
+        manager::{ServerManagerMessage, UiManagerCommand, UiManagerResponse},
+        types::{BuilderMessage, ServerMessage, UiBuilderMessage, UiMessage},
+    };
 
     pub struct UiMouthpiece {
         pub to_server: UnboundedSender<UiMessage>,
@@ -68,10 +60,19 @@ pub mod mouthpieces {
 
         pub to_builder: UnboundedSender<UiBuilderMessage>,
         pub from_builder: UnboundedReceiver<BuilderMessage>,
+
+        pub to_manager: UnboundedSender<UiManagerCommand>,
+        pub from_manager: UnboundedReceiver<UiManagerResponse>,
+    }
+
+    pub struct BuilderMouthpiece {
+        pub to_ui: UnboundedSender<BuilderMessage>,
+        pub from_ui: UnboundedReceiver<UiBuilderMessage>,
     }
 
     pub struct ServerMouthpiece {
         pub to_ui: UnboundedSender<ServerMessage>,
         pub from_ui: UnboundedReceiver<UiMessage>,
+        pub to_manager: UnboundedSender<ServerManagerMessage>,
     }
 }

@@ -9,6 +9,7 @@ mod updates;
 mod view;
 
 pub fn main(mouthpiece: UiMouthpiece) -> eframe::Result<()> {
+    println!("[*] ui spawned");
     let options = NativeOptions {
         viewport: ViewportBuilder::default().with_inner_size([720.0, 560.0]),
         ..Default::default()

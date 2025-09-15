@@ -63,7 +63,10 @@ impl App for View {
         // while let Ok(...
 
         self.state.notifications.show(ctx);
-        updates::main(self, ctx);
+
+        updates::server(self, ctx);
+        updates::manager(self, ctx);
+
         switcher::render(self, ctx);
 
         CentralPanel::default().show(ctx, |ui| match &self.state.page {

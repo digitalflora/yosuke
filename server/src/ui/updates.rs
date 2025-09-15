@@ -1,7 +1,8 @@
 use crate::{types::*, ui::view::View};
 use egui::Context;
 
-pub fn main(view: &mut View, _ctx: &Context) {
+// updates coming in to/from the Server
+pub fn server(view: &mut View, _ctx: &Context) {
     while let Ok(msg) = view.mouthpiece.from_server.try_recv() {
         match msg {
             ServerMessage::Listening => {
@@ -29,4 +30,9 @@ pub fn main(view: &mut View, _ctx: &Context) {
             }
         }
     }
+}
+
+// updates coming in to/from the Manager
+pub fn manager(view: &mut View, _ctx: &Context) {
+    while let Ok(msg) = view.mouthpiece.from_manager.try_recv() {}
 }

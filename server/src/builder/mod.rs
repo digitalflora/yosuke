@@ -1,6 +1,9 @@
 use crate::{
     SettingsPointer, settings,
-    types::{BuilderMessage, UiBuilderMessage},
+    types::{
+        BuilderMessage, UiBuilderMessage,
+        mouthpieces::{self, BuilderMouthpiece},
+    },
 };
 use aes_gcm::aead::rand_core::{self, RngCore};
 use rfd::FileDialog;
@@ -22,13 +25,9 @@ pub fn running_dir() -> std::path::PathBuf {
         .to_path_buf()
 }
 
-pub async fn main(
-    mut settings: SettingsPointer,
-    mut to_ui: UnboundedSender<BuilderMessage>,
-    mut from_ui: UnboundedReceiver<UiBuilderMessage>,
-) {
-    println!("[*] builder task spawned");
-    while let Some(command) = from_ui.recv().await {
+pub async fn main(mut settings: SettingsPointer, mut mouthpiece: BuilderMouthpiece) {
+    println!("[*] builder spawned");
+    while let Some(command) = mouthpiece.from_ui.recv().await {
         match command {
             UiBuilderMessage::Build(builder_settings) => {
                 println!("[*] generating mutex");
