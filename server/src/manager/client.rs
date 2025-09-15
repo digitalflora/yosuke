@@ -12,10 +12,6 @@ pub enum ClientCommand {
 pub enum ClientResponse {
     Read(String, Vec<u8>),
 }
-pub struct ClientMouthpiece {
-    pub to_client: UnboundedSender<ClientCommand>,
-    pub from_client: UnboundedReceiver<ClientResponse>,
-}
 pub struct Client {
     pub mutex: String,
     pub sender: UnboundedSender<ClientCommand>,

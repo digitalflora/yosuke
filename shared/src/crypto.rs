@@ -23,12 +23,12 @@ impl Encryption {
         let mut nonce_b = [0u8; 12];
         rand::rngs::OsRng
             .try_fill_bytes(&mut nonce_b)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, "Failed try_fill_bytes()"))?;
+            .map_err(|_e| io::Error::new(io::ErrorKind::Other, "Failed try_fill_bytes()"))?;
         let nonce = Nonce::from_slice(&nonce_b);
         let encrypted = self
             .cipher
             .encrypt(nonce, data)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, "Failed encrypt()"))?;
+            .map_err(|_e| io::Error::new(io::ErrorKind::Other, "Failed encrypt()"))?;
         Ok((nonce_b, encrypted))
     }
 
