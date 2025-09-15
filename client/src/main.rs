@@ -121,6 +121,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &encryption,
                 bincode::encode_to_vec(computer_info_payload, bincode::config::standard()).unwrap(),
             );
+            println!("[*] sent computer info to server");
+        } else {
+            println!("[x] failed to send computer info");
         }
 
         match wait(stream, encryption).await {
