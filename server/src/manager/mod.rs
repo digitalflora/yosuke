@@ -83,13 +83,14 @@ impl ClientManager {
                         ServerManagerMessage::ClearClients => {
                             println!("[*] clearing clients");
                             for (_, client) in self.clients.iter() {
+                                println!("[*] aborting task {}", client.whitelisted.mutex);
                                 client.handle.abort();
                             }
                             self.clients.clear();
                         },
                         ServerManagerMessage::ClientDisconnect(mutex) => {
-                            println!("[*] disconnecting client {}", mutex);
                             if let Some(client) = self.clients.get(&mutex) {
+                                println!("[*] aborting task {}", mutex);
                                 client.handle.abort();
                                 self.clients.remove(&mutex);
                             }

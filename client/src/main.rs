@@ -126,7 +126,10 @@ async fn wait(mut stream: TcpStream) -> Result<(), std::io::Error> {
                 let response = String::from_utf8_lossy(&buf);
                 println!("{}", response);
             }
-            Err(e) => {}
+            Err(e) => {
+                println!("[x] {}", e);
+                break Ok(());
+            }
         };
     }
 }
