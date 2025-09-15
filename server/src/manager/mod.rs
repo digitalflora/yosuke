@@ -16,7 +16,9 @@ use crate::{
 pub enum UiManagerCommand {}
 pub enum UiManagerResponse {}
 pub enum ServerManagerMessage {
+    ClearClients,
     ClientConnect(WhitelistedClient, TcpStream),
+    ClientDisconnect(String),
 }
 // pub enum ServerManagerResponse {}
 
@@ -78,6 +80,20 @@ impl ClientManager {
                 Some(server_command) = self.mouthpiece.from_server.recv() => {
                     println!("[*][manager] received command from server");
                     match server_command {
+                        ServerManagerMessage::ClearClients => {
+                            println!("[*] clearing clients");
+                            for (_, client) in self.clients.iter() {
+                                client.handle.abort();
+                            }
+                            self.clients.clear();
+                        },
+                        ServerManagerMessage::ClientDisconnect(mutex) => {
+                            println!("[*] disconnecting client {}", mutex);
+                            if let Some(client) = self.clients.get(&mutex) {
+                                client.handle.abort();
+                                self.clients.remove(&mutex);
+                            }
+                        }
                         ServerManagerMessage::ClientConnect(whitelisted, stream) => {
                             {
                                 let (to_client, from_manager) = unbounded_channel::<ClientCommand>();
