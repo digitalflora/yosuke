@@ -8,6 +8,13 @@
 ---
 
 # detailing Yosuke
+## current features
+- screenshot of client
+- - automatic update at ~3fps
+- send MessageBox
+- disconnect
+## future features
+- audio capture
 ## server
 - relies on egui/eframe for the interface
 - relies on tokio for networking and threading
