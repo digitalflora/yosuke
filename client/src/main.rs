@@ -94,12 +94,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // send a payload here
-        /*let payload = b"hello world";
+        let payload = b"hello world";
         let payload_size = payload.len().to_le_bytes();
         println!("[*] sending payload size of {}", payload.len());
         stream.write_all(&payload_size).await?;
         println!("[*] sending payload!");
-        stream.write_all(payload).await?;*/
+        stream.write_all(payload).await?;
 
         match wait(stream).await {
             Ok(_) => {

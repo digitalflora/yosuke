@@ -1,10 +1,12 @@
-use crate::types::WhitelistedClient;
+use crate::{net, types::WhitelistedClient};
+
 use tokio::{
     io::AsyncReadExt,
     net::TcpStream,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
+use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 pub enum ClientCommand {
     Write(Vec<u8>),
@@ -29,12 +31,22 @@ pub struct ClientPassthroughMouthpiece {
 pub async fn task(mut stream: TcpStream, mut mouthpiece: ClientPassthroughMouthpiece) {
     println!("[v] client task! read loop should go here");
 
-    let mut payload_size_buf = [0u8; std::mem::size_of::<usize>()];
+    let (read, write) = stream.into_split();
+    let mut read = read.compat();
+    let mut write = write.compat_write();
 
     loop {
         tokio::select! {
-            stream_read = stream.read_exact(&mut payload_size_buf) => {},
-            manager_read = mouthpiece.from_manager.recv() => {},
+            stream_read = shared::net::read(&mut read) => {
+                match stream_read {
+                    Ok(buffer) => {
+                        println!("[*] received data from a client");
+                    },
+                    Err(_e) => {}
+                }
+            }
+            // from TcpStream, read in payload size and then read the actual payload into a buffer based on the size
+            manager_read = mouthpiece.from_manager.recv() => {}
         }
     }
 }

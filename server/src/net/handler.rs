@@ -1,19 +1,13 @@
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
-    sync::mpsc::UnboundedSender,
 };
 
-use crate::{
-    SettingsPointer,
-    manager::ServerManagerMessage,
-    manager::client::Client,
-    types::{ServerMessage, WhitelistedClient},
-};
+use crate::{SettingsPointer, types::WhitelistedClient};
 
 pub async fn handshake(
     stream: &mut TcpStream,
-    mut settings: &SettingsPointer,
+    settings: &SettingsPointer,
 ) -> Result<WhitelistedClient, std::io::Error> {
     // what do i do here...?
 

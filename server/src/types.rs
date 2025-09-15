@@ -30,9 +30,6 @@ pub enum ServerMessage {
 pub enum UiMessage {
     Listen,
     Shutdown,
-
-    // send data to client
-    Send(String, Vec<u8>), // mutex, data
 }
 
 pub struct BuilderSettings {

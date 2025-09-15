@@ -1,15 +1,13 @@
-use std::sync::Arc;
-
 use crate::{
     SettingsPointer,
-    manager::{ServerManagerMessage, client::Client},
+    manager::ServerManagerMessage,
     net::handler,
     types::{mouthpieces::ServerMouthpiece, *},
 };
-use tokio::{net::TcpListener, sync::Mutex};
+use tokio::net::TcpListener;
 
 pub async fn main(
-    mut settings: SettingsPointer,
+    settings: SettingsPointer,
     mut mouthpiece: ServerMouthpiece,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("[*] server spawned");
@@ -33,12 +31,6 @@ pub async fn main(
                         listener = None;
                         mouthpiece.to_ui.send(ServerMessage::Stopped)?;
                     }, None => {break Ok(())}
-
-                    // send data to a client
-                    Some(UiMessage::Send(mutex, data)) => {
-                        println!("[*][listen()] send to be implemented");
-                    }
-
                 }
             }
 
