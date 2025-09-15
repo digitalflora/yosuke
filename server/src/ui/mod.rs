@@ -27,7 +27,7 @@ pub fn main(mouthpiece: UiMouthpiece) -> eframe::Result<()> {
 
 fn load_icon() -> IconData {
     let (icon_rgba, icon_width, icon_height) = {
-        let icon = include_bytes!("../../../yosuke.ico");
+        let icon = include_bytes!("../../../assets/yosuke.ico");
         let image = image::load_from_memory(icon)
             .expect("Failed to open icon path")
             .into_rgba8();
