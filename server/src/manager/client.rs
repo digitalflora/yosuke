@@ -9,10 +9,10 @@ use tokio::{
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 pub enum ClientCommand {
-    Write(Vec<u8>),
+    Write(String, Vec<u8>),
 }
 pub enum ClientResponse {
-    Read(Vec<u8>),
+    Read(String, Vec<u8>),
 }
 pub struct ClientMouthpiece {
     pub to_client: UnboundedSender<ClientCommand>,
@@ -28,7 +28,11 @@ pub struct ClientPassthroughMouthpiece {
     pub from_manager: UnboundedReceiver<ClientCommand>,
 }
 
-pub async fn task(mut stream: TcpStream, mut mouthpiece: ClientPassthroughMouthpiece) {
+pub async fn task(
+    mutex: String,
+    mut stream: TcpStream,
+    mut mouthpiece: ClientPassthroughMouthpiece,
+) {
     println!("[v] client task! read loop should go here");
 
     let (read, write) = stream.into_split();
@@ -39,8 +43,9 @@ pub async fn task(mut stream: TcpStream, mut mouthpiece: ClientPassthroughMouthp
         tokio::select! {
             stream_read = shared::net::read(&mut read) => {
                 match stream_read {
-                    Ok(buffer) => {
+                    Ok(buf) => {
                         println!("[*] received data from a client");
+                        let _ = mouthpiece.to_manager.send(ClientResponse::Read(mutex.clone(), buf));
                     },
                     Err(_e) => {}
                 }

@@ -118,21 +118,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn wait(mut stream: TcpStream) -> Result<(), std::io::Error> {
     println!("[*][wait()] entered loop");
+
     loop {
-        println!(
-            "[DEBUG] About to read {} bytes for size...",
-            size_of::<usize>()
-        );
-        let mut size_buf = [0u8; size_of::<usize>()];
-        stream.read_exact(&mut size_buf).await?;
-        let size = usize::from_le_bytes(size_buf);
-        println!("[*] ready for payload (size: {})", size);
-
-        let mut payload = vec![0u8; size];
-        stream.read_exact(&mut payload).await?;
-        println!("[v] payload received!!");
-
-        let readable_payload = String::from_utf8_lossy(&payload);
-        println!("{}", readable_payload);
+        match shared::net::read(&mut stream).await {
+            Ok(buf) => {
+                println!("[*] got sum shit from the server");
+                let response = String::from_utf8_lossy(&buf);
+                println!("{}", response);
+            }
+            Err(e) => {}
+        };
     }
 }

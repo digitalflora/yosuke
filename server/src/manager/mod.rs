@@ -54,7 +54,13 @@ impl ClientManager {
         loop {
             tokio::select! {
                 Some(client_command) = self.mouthpiece.client.from_client.recv() => {
-                    println!("[*] one of many clients has sent something to us");
+                    match client_command {
+                        ClientResponse::Read(mutex, buf) => {
+                            let response = String::from_utf8_lossy(&buf);
+                            println!("[*][{}] sent data", mutex);
+                            println!("{}", response);
+                        }
+                    }
                 }
                 Some(ui_command) = self.mouthpiece.from_ui.recv() => {
                     println!("[*] received command from ui");
@@ -67,12 +73,13 @@ impl ClientManager {
                             {
                                 let (to_client, from_manager) = unbounded_channel::<ClientCommand>();
                                 let mutex = whitelisted.mutex.clone();
+                                let task_mutex = mutex.clone();
                                 let to_manager = self.mouthpiece.client.to_manager.clone();
                                 let client = Client {
                                     whitelisted: whitelisted,
                                     sender: to_client, // no mouthpiece needed because we clone to_manager,
                                     handle: tokio::spawn(async move {
-                                        client::task(stream, ClientPassthroughMouthpiece {
+                                        client::task(task_mutex, stream, ClientPassthroughMouthpiece {
                                             to_manager: to_manager,
                                             from_manager: from_manager
                                         }).await;
