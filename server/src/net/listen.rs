@@ -28,6 +28,7 @@ pub async fn main(
                         }
                     }
                     Some(UiMessage::Shutdown) => {
+                        mouthpiece.to_manager.send(ServerManagerMessage::ClearClients)?;
                         listener = None;
                         mouthpiece.to_ui.send(ServerMessage::Stopped)?;
                     }, None => {break Ok(())}
