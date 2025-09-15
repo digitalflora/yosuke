@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use aes_gcm::aead::generic_array::GenericArray;
+use egui::ColorImage;
 use shared::{
-    commands::{BaseCommand, BaseResponse},
+    commands::{BaseCommand, BaseResponse, Response},
     crypto::Encryption,
 };
 use tokio::sync::mpsc::unbounded_channel;
@@ -41,7 +42,37 @@ impl ClientManager {
                             let (response, _size): (BaseResponse, usize) = bincode::decode_from_slice(&buf, bincode::config::standard()).unwrap();
                             println!("[*][{}] sent data", mutex);
                             // pass to UI?
-                            let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, response.response));
+
+                            // PROCESS!!
+                            // these get re-evaluated by the UI!
+                            // this match arm is here because i needed a way to process the screenshot off the UI thread, sorry :(
+                            match response.response {
+                                ///////////////////////////////////
+                                Response::Success => {
+                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::Success));
+                                }
+                                Response::Error(error) => {
+                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::Error(error)));
+                                }
+                                ///////////////////////////////////
+                                Response::Screenshot(screenshot) => {
+                                    let decoded_image = image::load_from_memory(&screenshot.data).unwrap();
+                                    let rgba_image = decoded_image.to_rgba8();
+                                    let image = ColorImage::from_rgba_unmultiplied(
+                                        [screenshot.width as usize, screenshot.height as usize],
+                                        rgba_image.as_raw(),
+                                    );
+
+                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::Screenshot(image)));
+
+                                },
+                                Response::ComputerInfo(info) => {
+                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::ComputerInfo(info)));
+                                },
+                                // _ => {}
+                            }
+
+                            //let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, response.response));
                         },
                         ClientResponse::Disconnect(mutex) => {
                             println!("[*][{}] disconnected", mutex);

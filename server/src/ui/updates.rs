@@ -1,10 +1,9 @@
 use crate::{
-    manager::types::UiManagerResponse,
+    manager::types::{ProcessedResponse, UiManagerResponse},
     types::*,
     ui::{client::ClientView, view::View},
 };
 use egui::Context;
-use shared::commands::Response;
 
 // updates coming in to/from the Server
 pub fn server(view: &mut View, _ctx: &Context) {
@@ -38,10 +37,10 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                 println!("[*][updates] sup");
 
                 match response {
-                    Response::Success => {
+                    ProcessedResponse::Success => {
                         println!("[v] yay shit just works");
                     }
-                    Response::ComputerInfo(info) => {
+                    ProcessedResponse::ComputerInfo(info) => {
                         if view.state.clients.contains_key(&mutex) {
                             // we already have info on this client
                             println!("[*] already got you");
@@ -54,7 +53,14 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                             println!("{}", view.state.clients.len());
                         }
                     }
-                    Response::Error(err) => {
+                    ProcessedResponse::Screenshot(screenshot) => {
+                        if let Some(client) = view.state.clients.get_mut(&mutex) {
+                            println!("[*] got screenshot");
+                            client.state.screen = Some(screenshot);
+                        }
+                        // println!("[*] got screenshot data, will handle later (nice rhyme)");
+                    }
+                    ProcessedResponse::Error(err) => {
                         println!("[x] oopsie: {}", err);
                     }
                 }

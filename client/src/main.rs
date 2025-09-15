@@ -8,7 +8,6 @@ pub static _CONFIG_DATA: [u8; 4096] = [0xAA; 4096];
 ///////////////////////////////////////////////////////////////////
 
 use std::sync::Arc;
-use std::sync::mpsc::channel;
 
 use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
@@ -212,7 +211,7 @@ async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::
                 if let Ok(decrypted) = encryption.decrypt(&nonce, buffer) {
                     println!("[v][wait] decrypted payload (size:{})", &decrypted.len());
 
-                    let (command, size): (BaseCommand, usize) =
+                    let (command, _size): (BaseCommand, usize) =
                         bincode::decode_from_slice(&decrypted, bincode::config::standard())
                             .unwrap();
 

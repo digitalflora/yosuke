@@ -62,10 +62,10 @@ impl ActiveCommands {
         println!("[*] spawned task");
     }
 
-    async fn halt(&self) {
+    /*async fn halt(&self) {
         let mut lock = self.tasks.lock().await;
         for (_, handle) in lock.drain() {
             handle.cancel().await;
         }
-    }
+    }*/
 }

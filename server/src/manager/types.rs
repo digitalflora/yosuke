@@ -1,4 +1,5 @@
-use shared::commands::{Command, Response};
+use egui::ColorImage;
+use shared::commands::{Command, ComputerInfoResponse};
 use tokio::{
     net::TcpStream,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -6,12 +7,20 @@ use tokio::{
 
 use crate::{manager::client::ClientResponse, types::WhitelistedClient};
 
+pub enum ProcessedResponse {
+    Success,
+    Error(String),
+    ComputerInfo(ComputerInfoResponse),
+    // actually processed:
+    Screenshot(ColorImage),
+}
+
 pub enum UiManagerCommand {
     SendCommand(String, Command),
     Disconnect(String),
 }
 pub enum UiManagerResponse {
-    GetResponse(String, Response),
+    GetResponse(String, ProcessedResponse),
     Remove(String), // remove by mutex
     RemoveAll,
 }

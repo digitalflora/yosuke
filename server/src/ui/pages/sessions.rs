@@ -39,9 +39,6 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
             header.col(|ui| {
                 ui.strong("Hostname");
             });
-            header.col(|ui| {
-                ui.strong("Address");
-            });
         })
         .body(|mut body| {
             for (_i, client) in view.state.clients.iter_mut().enumerate() {

@@ -4,6 +4,7 @@ use bincode::{Decode, Encode};
 pub enum Command {
     ComputerInfo,
     MessageBox(MessageBoxArgs),
+    Screenshot,
 }
 #[derive(Encode, Decode)]
 pub struct MessageBoxArgs {
@@ -15,10 +16,17 @@ pub enum Response {
     Success,
     Error(String),
     ComputerInfo(ComputerInfoResponse),
+    Screenshot(ScreenshotResponse),
 }
 #[derive(Encode, Decode)]
 pub struct ComputerInfoResponse {
     pub hostname: String,
+}
+#[derive(Encode, Decode)]
+pub struct ScreenshotResponse {
+    pub height: u32,
+    pub width: u32,
+    pub data: Vec<u8>,
 }
 
 #[derive(Encode, Decode)]
