@@ -68,7 +68,7 @@ jobs:
         with:
           name: yosuke_macOS
           path: |
-            target/release/bundle/osx/Yosuke.app.zip
+            Yosuke.app.zip
             stub.dat
 
   # Linux
