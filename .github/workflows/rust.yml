@@ -27,6 +27,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup cross-compiler
+        run: |
+          rustup target add x86_64-pc-windows-gnu
+        cargo install cross --git https://github.com/cross-rs/cross
       - name: Install cargo-bundle
         run: cargo install cargo-bundle
       - name: Build
@@ -42,6 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup cross-compiler
+        run: |
+          rustup target add x86_64-pc-windows-gnu
+          cargo install cross --git https://github.com/cross-rs/cross
       - name: Build
         run: ./build_linux.sh
       - name: Upload Linux bundle
