@@ -55,14 +55,14 @@ jobs:
       - name: Install cargo-bundle
         run: cargo install cargo-bundle
       - name: Build server
-        run: cd server && cargo bundle
+        run: cd server && cargo bundle --release
       - name: Download stub
         uses: actions/download-artifact@v4
         with:
           name: stub
           path: .
       - name: Compress .app
-        run: ditto -c -k --sequesterRsrc --keepParent target/release/bundle/osx/Yosuke.app Yosuke.app.zip
+        run: ditto -c -k --sequesterRsrc --keepParent ./target/release/bundle/osx/Yosuke.app Yosuke.app.zip
       - name: Upload macOS bundle
         uses: actions/upload-artifact@v4
         with:
