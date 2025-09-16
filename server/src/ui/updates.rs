@@ -4,6 +4,7 @@ use crate::{
     ui::{client::ClientView, view::View},
 };
 use egui::Context;
+use shared::commands::CaptureType;
 
 // updates coming in to/from the Server
 pub fn server(view: &mut View, _ctx: &Context) {
@@ -58,12 +59,17 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                             println!("{}", view.state.clients.len());
                         }
                     }
-                    ProcessedResponse::Screenshot(screenshot) => {
+                    ProcessedResponse::CapturePacket(capture_type, image) => {
+                        println!("[*] got img");
                         if let Some(client) = view.state.clients.get_mut(&mutex) {
-                            println!("[*] got screenshot");
-                            client.state.screen = Some(screenshot);
+                            match capture_type {
+                                CaptureType::Screen => {
+                                    client.state.captures.screen = Some(image);
+                                    client.state.textures.screen = None;
+                                }
+                                _ => { /* dont care about audio */ }
+                            }
                         }
-                        // println!("[*] got screenshot data, will handle later (nice rhyme)");
                     }
                     ProcessedResponse::Error(err) => {
                         println!("[x] oopsie: {}", err);

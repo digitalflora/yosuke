@@ -1,7 +1,6 @@
-use std::net::SocketAddr;
-
 use egui::ColorImage;
-use shared::commands::{Command, ComputerInfoResponse};
+use shared::commands::{CaptureType, Command, ComputerInfoResponse};
+use std::net::SocketAddr;
 use tokio::{
     net::TcpStream,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -13,8 +12,7 @@ pub enum ProcessedResponse {
     Success,
     Error(String),
     ComputerInfo(ComputerInfoResponse, SocketAddr),
-    // actually processed:
-    Screenshot(ColorImage),
+    CapturePacket(CaptureType, ColorImage),
 }
 
 pub enum UiManagerCommand {
@@ -29,7 +27,7 @@ pub enum UiManagerResponse {
 pub enum ServerManagerMessage {
     ClearClients,
     ClientConnect(WhitelistedClient, TcpStream),
-    ClientDisconnect(String),
+    // ClientDisconnect(String),
 }
 // pub enum ServerManagerResponse {}
 

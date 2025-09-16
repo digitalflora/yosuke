@@ -1,23 +1,49 @@
-use std::{collections::HashMap, sync::Arc, thread};
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread,
+};
 
-use shared::commands::{BaseCommand, BaseResponse, Response};
+use shared::commands::{BaseCommand, BaseResponse, CaptureCommand, CaptureType, Command, Response};
 use smol::{Task, channel::Sender, lock::Mutex};
 
 use crate::handler;
 
+pub struct CaptureTaskState {
+    id: u64,
+    active: Arc<AtomicBool>,
+}
 pub struct ActiveCommands {
     tasks: Arc<Mutex<HashMap<u64, Task<()>>>>,
+    captures: Arc<Mutex<HashMap<CaptureType, CaptureTaskState>>>, // type, command id
 }
 impl ActiveCommands {
     pub fn new() -> Self {
         Self {
             tasks: Arc::new(Mutex::new(HashMap::new())),
+            captures: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
     pub async fn spawn(&self, command: BaseCommand, tx: Sender<Vec<u8>>) {
         let id = command.id;
         let tasks = Arc::clone(&self.tasks);
+
+        // stop capturing
+        if let Command::Capture(CaptureCommand::Stop, capture_type) = &command.command {
+            let mut captures = self.captures.lock().await;
+            if let Some(task_state) = captures.remove(capture_type) {
+                let mut tasks = self.tasks.lock().await;
+                if let Some(_task) = tasks.remove(&task_state.id) {
+                    task_state.active.store(false, Ordering::SeqCst);
+                    //task.cancel().await;
+                }
+            }
+            return;
+        }
 
         let parallelism = thread::available_parallelism()
             .map(|n| n.get())
@@ -40,18 +66,42 @@ impl ActiveCommands {
             return;
         }
 
-        let handle = smol::spawn(async move {
-            let res = smol::unblock(move || handler::main(command.command)).await;
-            let res_data = bincode::encode_to_vec(
-                BaseResponse {
-                    id: command.id,
-                    response: res,
-                },
-                bincode::config::standard(),
-            )
-            .unwrap();
+        // start capturing
+        let mut running: Option<Arc<AtomicBool>> = None;
+        if let Command::Capture(CaptureCommand::Start, capture_type) = &command.command {
+            let mut captures = self.captures.lock().await;
+            if captures.contains_key(capture_type) {
+                let refusal = bincode::encode_to_vec(
+                    BaseResponse {
+                        id: command.id,
+                        response: Response::Error("Capture already started!".to_string()),
+                    },
+                    bincode::config::standard(),
+                )
+                .unwrap();
+                let _ = tx.send(refusal).await;
+                return;
+            };
 
-            let _ = tx.send(res_data).await;
+            let capture_state = CaptureTaskState {
+                id,
+                active: Arc::new(AtomicBool::new(true)),
+            };
+            running = Some(capture_state.active.clone());
+            captures.insert(capture_type.clone(), capture_state);
+        }
+
+        // handle capture in here because i don't want to move shit to another thread, that's looong
+        let captures = self.captures.clone();
+        let command_clone = command.command.clone();
+        let tx_clone = tx.clone();
+        let handle = smol::spawn(async move {
+            smol::unblock(move || handler::main(command, tx_clone, running)).await;
+            // cleanup after running the capture loop
+            if let Command::Capture(CaptureCommand::Start, capture_type) = &command_clone {
+                let mut captures = captures.lock().await;
+                captures.remove(capture_type);
+            }
 
             let mut lock = tasks.lock().await;
             lock.remove(&id);
