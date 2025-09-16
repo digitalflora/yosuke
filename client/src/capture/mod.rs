@@ -1,5 +1,4 @@
 pub mod jpeg;
-pub mod mic;
 pub mod screen;
 /*/
 #[derive(Clone)]
