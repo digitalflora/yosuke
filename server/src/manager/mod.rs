@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use aes_gcm::aead::generic_array::GenericArray;
 use egui::ColorImage;
 use shared::{
-    commands::{BaseCommand, BaseResponse, Response},
+    commands::*,
     crypto::Encryption,
 };
 use tokio::sync::mpsc::unbounded_channel;

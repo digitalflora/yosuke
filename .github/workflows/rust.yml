@@ -52,6 +52,8 @@ jobs:
     needs: build-stub
     steps:
       - uses: actions/checkout@v4
+      - name: Install cargo-bundle
+        run: cargo install cargo-bundle
       - name: Build server
         run: cd server && cargo bundle
       - name: Download stub
