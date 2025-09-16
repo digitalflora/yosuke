@@ -40,4 +40,5 @@ cargo build --release --bin client
 
 ---
 
-<img alt="UI for Yosuke (the RAT)" src="./assets/preview.png">
+<img alt="UI for Yosuke (the RAT) running on Windows" src="./assets/preview.png">
+<img alt="UI for Yosuke (the RAT) running on macOS" src="./assets/macOS.png">
