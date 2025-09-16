@@ -30,7 +30,7 @@ jobs:
       - name: Setup cross-compiler
         run: |
           rustup target add x86_64-pc-windows-gnu
-        cargo install cross --git https://github.com/cross-rs/cross
+          cargo install cross --git https://github.com/cross-rs/cross
       - name: Install cargo-bundle
         run: cargo install cargo-bundle
       - name: Build
