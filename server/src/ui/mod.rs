@@ -22,7 +22,8 @@ pub fn main(mouthpiece: UiMouthpiece) -> eframe::Result<()> {
         "Yosuke",
         options,
         Box::new(move |_cc| Ok(Box::new(view::View::new(mouthpiece)))),
-        }
+    )
+}
 
 fn get_icon() -> Vec<u8> {
     #[cfg(target_os = "macos")]
