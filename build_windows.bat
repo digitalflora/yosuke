@@ -1,6 +1,7 @@
 @echo off
 
 cd /d "%~dp0"
+rd /s target\release\bundle\windows\
 cd server
 cargo build --release
 cd ..\client

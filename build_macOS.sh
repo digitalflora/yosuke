@@ -1,6 +1,7 @@
 cd "$(dirname "$0")"
+rm -r target/release/bundle/osx/
 cd ./server
-cargo bundle --release
+cargo bundle --release # creates bundle/osx
 cd ../client
 cargo build --release --target x86_64-pc-windows-gnu
 cd ../
