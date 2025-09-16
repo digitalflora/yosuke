@@ -1,0 +1,101 @@
+name: Build
+
+on:
+  # i dont want it to run every single time i push something because i push often
+  #  push:
+  #    branches: [ main ]
+  #  pull_request:
+  #    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-stub:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build client
+        run: cargo build -r --bin client
+      - name: Rename client bin to stub.dat
+        run: ren target\release\client.exe stub.dat
+      - name: Upload stub
+        uses: actions/upload-artifact@v4
+        with:
+          name: stub
+          path: target\release\stub.dat
+
+  # Windows
+  build-windows:
+    runs-on: windows-latest
+    needs: build-stub
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run all tests
+        run: cargo test
+      - name: Build server
+        run: cargo build -r --bin server
+      - name: Download stub
+        uses: actions/download-artifact@v4
+        with:
+          name: stub
+          path: .
+      - name: Copy server binary to root
+        run: copy target\release\server.exe Yosuke.exe
+      - name: Upload Windows bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-bundle
+          path: |
+            Yosuke.exe
+            stub.dat
+
+  # macOS
+  build-macos:
+    runs-on: macos-latest
+    needs: build-stub
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run server tests
+        run: cargo test -p server
+      - name: Build server
+        run: cd server & cargo bundle
+      - name: Download stub
+        uses: actions/download-artifact@v4
+        with:
+          name: stub
+          path: .
+      - name: Copy server binary to root
+        run: cp target/release/server ./Yosuke
+      - name: Upload macOS bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-bundle
+          path: |
+            Yosuke
+            stub.dat
+
+  # Linux
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: build-stub
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run server tests
+        run: cargo test -p server
+      - name: Build server
+        run: cargo build -r --bin server
+      - name: Download stub
+        uses: actions/download-artifact@v4
+        with:
+          name: stub
+          path: .
+      - name: Create empty whitelist.json
+        run: echo "[]" > whitelist.json
+      - name: Copy server binary to root
+        run: cp target/release/server ./Yosuke
+      - name: Upload Linux bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-bundle
+          path: |
+            Yosuke
+            stub.dat
