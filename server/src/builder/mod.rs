@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
     SettingsPointer, settings,
     types::{UiBuilderMessage, mouthpieces::BuilderMouthpiece},
@@ -13,12 +15,29 @@ fn mutex() -> Result<[u8; 8], Box<dyn std::error::Error>> {
     rand_core::OsRng.fill_bytes(&mut mutex_buf);
     Ok(mutex_buf)
 }
-pub fn running_dir() -> std::path::PathBuf {
-    std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf()
+pub fn running_dir() -> PathBuf {
+    let exe_path = std::env::current_exe().expect("Failed to get current_exe");
+
+    #[cfg(target_os = "macos")]
+    {
+        // /Yosuke.app/Contents/MacOS/server → /Yosuke.app
+        exe_path
+            .parent() // MacOS
+            .and_then(|p| p.parent()) // Contents
+            .and_then(|p| p.parent()) // .app
+            .and_then(|p| p.parent()) // parent folder
+            .map(|p| p.to_path_buf())
+            .expect("Failed to resolve .app bundle path")
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // /Yosuke.exe
+        exe_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .expect("Failed to resolve executable directory")
+    }
 }
 
 pub async fn main(settings: SettingsPointer, mut mouthpiece: BuilderMouthpiece) {

@@ -22,12 +22,22 @@ pub fn main(mouthpiece: UiMouthpiece) -> eframe::Result<()> {
         "Yosuke",
         options,
         Box::new(move |_cc| Ok(Box::new(view::View::new(mouthpiece)))),
-    )
+        }
+
+fn get_icon() -> Vec<u8> {
+    #[cfg(target_os = "macos")]
+    {
+        return include_bytes!("../../../assets/yosuke.png").to_vec();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        return include_bytes!("../../../assets/yosuke.ico").to_vec();
+    }
 }
 
 fn load_icon() -> IconData {
     let (icon_rgba, icon_width, icon_height) = {
-        let icon = include_bytes!("../../../assets/yosuke.ico");
+        let icon = &get_icon();
         let image = image::load_from_memory(icon)
             .expect("Failed to open icon path")
             .into_rgba8();

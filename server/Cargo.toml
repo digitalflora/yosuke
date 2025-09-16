@@ -17,6 +17,11 @@ shared = { path = "../shared" }
 tokio = { version = "1.47.1", features= ["full"] }
 tokio-util = { version = "0.7.16", features = ["compat"] }
 
+[package.metadata.bundle]
+name = "Yosuke"
+identifier = "uk.s1no.yosuke"
+icon = ["../assets/yosuke.icns"]
+
 [build-dependencies]
 [build-dependencies.winres]
 version = "0.1.12"

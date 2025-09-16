@@ -53,7 +53,7 @@ impl ClientManager {
                                 }
                                 Response::Error(error) => {
                                     let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::Error(error)));
-                                }
+                                },
                                 ///////////////////////////////////
                                 Response::Screenshot(screenshot) => {
                                     let decoded_image = image::load_from_memory(&screenshot.data).unwrap();
