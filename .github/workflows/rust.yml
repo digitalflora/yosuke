@@ -62,7 +62,7 @@ jobs:
           name: stub
           path: .
       - name: Compress .app
-        run: ditto -c -k --sequesterRsrc --keepParent Yosuke.app Yosuke.app.zip
+        run: ditto -c -k --sequesterRsrc --keepParent target/release/bundle/osx/Yosuke.app Yosuke.app.zip
       - name: Upload macOS bundle
         uses: actions/upload-artifact@v4
         with:
