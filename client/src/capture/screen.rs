@@ -11,7 +11,7 @@ use std::{
 };
 
 use crate::{
-    capture::jpeg::{FrameSize, encode},
+    capture::jpeg::{FrameSize, encode, encode_fast},
     handler::send,
 };
 
@@ -64,7 +64,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
 
             //let compress_start = Instant::now();
 
-            let packet: VideoPacket = encode(
+            let packet: VideoPacket = encode_fast(
                 fixed_frame,
                 FrameSize {
                     // from
