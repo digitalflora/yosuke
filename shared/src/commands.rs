@@ -10,7 +10,7 @@ pub enum CaptureType {
     Screen,
     Camera,
     Mic,
-    Speaker,
+    //Speaker, // not possible because of windows LOL
 }
 #[derive(Encode, Decode)]
 pub struct VideoPacket {
@@ -21,6 +21,9 @@ pub struct VideoPacket {
 #[derive(Encode, Decode)]
 pub struct AudioPacket {
     pub data: Vec<u8>,
+    pub rate: u32,
+    pub channels: u16,
+    pub duration: i32,
 }
 
 #[derive(Encode, Decode)]

@@ -25,7 +25,6 @@ pub struct ClientViewCaptureState {
     pub screen: bool,
     pub webcam: bool,
     pub mic: bool,
-    pub speaker: bool,
 }
 impl Default for ClientViewCaptureState {
     fn default() -> Self {
@@ -33,7 +32,6 @@ impl Default for ClientViewCaptureState {
             screen: false,
             webcam: false,
             mic: false,
-            speaker: false,
         }
     }
 }
