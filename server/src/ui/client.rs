@@ -169,6 +169,9 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                     return; // don't restart for no reason
                                 }
                                 view.state.captures.screen.quality = CaptureQuality::Quality;
+                                if !view.state.capturing.screen {
+                                    return;
+                                } // don't start if not capturing
                                 // stop capture
                                 let _ = view.sender.send(UiManagerCommand::SendCommand(
                                     view.mutex.clone(),
@@ -196,6 +199,9 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                     return; // don't restart for no reason
                                 }
                                 view.state.captures.screen.quality = CaptureQuality::Quality;
+                                if !view.state.capturing.screen {
+                                    return;
+                                } // don't start if not capturing
                                 // stop capture
                                 let _ = view.sender.send(UiManagerCommand::SendCommand(
                                     view.mutex.clone(),
