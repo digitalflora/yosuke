@@ -45,7 +45,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
     #[cfg(windows)]
     unsafe {
         winapi::um::winuser::SetProcessDpiAwarenessContext(
-            winapi::um::winuser::DPI_AWARENESS_CONTEXT_SYSTEM_AWARE,
+            winapi::shared::windef::DPI_AWARENESS_CONTEXT_SYSTEM_AWARE,
         );
     }
 
@@ -105,6 +105,6 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
                 &tx,
             );
         }
-        thread::sleep(Duration::from_millis(50)); // send it flying
+        // thread::sleep(Duration::from_millis(50)); // send it flying
     }
 }
