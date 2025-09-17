@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }); // builder task
 
     // ui runs on the main thread
-    let _ = ui::main(UiMouthpiece {
+    if let Err(err) = ui::main(UiMouthpiece {
         to_server: to_server,
         from_server: from_server,
 
@@ -88,7 +88,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         to_manager: ui_to_manager,
         from_manager: ui_from_manager,
-    });
+    }) {
+        eprintln!("[x] ui error\n    {}", err);
+    }
 
     // ctrl_c().await?;
     Ok(())
