@@ -198,7 +198,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 if view.state.captures.screen.quality == CaptureQuality::Speed {
                                     return; // don't restart for no reason
                                 }
-                                view.state.captures.screen.quality = CaptureQuality::Quality;
+                                view.state.captures.screen.quality = CaptureQuality::Speed;
                                 if !view.state.capturing.screen {
                                     return;
                                 } // don't start if not capturing
