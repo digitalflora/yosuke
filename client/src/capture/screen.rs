@@ -9,6 +9,8 @@ use std::{
     thread,
     time::Duration,
 };
+#[cfg(windows)]
+use winapi;
 
 use crate::{
     capture::jpeg::{FrameSize, encode_fast},
@@ -39,14 +41,19 @@ fn stride(frame: &[u8], width: usize, height: usize) -> Vec<u8> {
 }
 
 pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
+    // Set DPI awareness to system aware
+    #[cfg(windows)]
+    unsafe {
+        winapi::um::winuser::SetProcessDpiAwarenessContext(
+            winapi::um::winuser::DPI_AWARENESS_CONTEXT_SYSTEM_AWARE,
+        );
+    }
+
     let display = Display::primary().unwrap();
     let mut capturer = Capturer::new(display).unwrap();
 
-    // today on problems i never knew existed:
-    // let scale = unsafe {winapi::um::winuser::GetDpiForSystem() } as f32 / 96.0
-    // divide these two by the scale please
     let (width, height) = (capturer.width(), capturer.height());
-    let resize_factor = 2.5;
+    let resize_factor = 4.0;
     let (target_width, target_height) = (
         (width as f32 / resize_factor) as usize,
         (height as f32 / resize_factor) as usize,
