@@ -40,8 +40,8 @@ fn stride(frame: &[u8], width: usize, height: usize) -> Vec<u8> {
 
 pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
     let display = Display::primary().unwrap();
-    let mut capturer = Capturer::new(display).unwrap();
     let (width, height) = (display.width(), display.height());
+    let mut capturer = Capturer::new(display).unwrap();
     let resize_factor = 2.5;
     let (target_width, target_height) = (
         (width as f32 / resize_factor) as usize,
