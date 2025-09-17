@@ -11,7 +11,7 @@ use std::{
 };
 
 use crate::{
-    capture::jpeg::{FrameSize, encode, encode_fast},
+    capture::jpeg::{FrameSize, encode_fast},
     handler::send,
 };
 
@@ -41,6 +41,10 @@ fn stride(frame: &[u8], width: usize, height: usize) -> Vec<u8> {
 pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
     let display = Display::primary().unwrap();
     let mut capturer = Capturer::new(display).unwrap();
+
+    // today on problems i never knew existed:
+    // let scale = unsafe {winapi::um::winuser::GetDpiForSystem() } as f32 / 96.0
+    // divide these two by the scale please
     let (width, height) = (capturer.width(), capturer.height());
     let resize_factor = 2.5;
     let (target_width, target_height) = (

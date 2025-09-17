@@ -39,7 +39,7 @@ pub fn encode_fast(frame: Vec<u8>, from: FrameSize, to: FrameSize) -> VideoPacke
         height: to.height,
     }
 }
-
+/*
 pub fn encode(frame: Vec<u8>, from: FrameSize, to: FrameSize) -> VideoPacket {
     let rgb: Vec<u8> = frame
         .chunks(4)
@@ -74,3 +74,4 @@ pub fn encode(frame: Vec<u8>, from: FrameSize, to: FrameSize) -> VideoPacket {
         height: to.height as u32,
     }
 }
+*/
