@@ -1,7 +1,7 @@
 use crate::manager::types::UiManagerCommand;
 use egui::{
     CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, Stroke,
-    TextureHandle, Window,
+    TextureHandle, Widget, Window,
 };
 use shared::commands::{
     CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
@@ -158,64 +158,21 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
 
                             //////////////////////////////////////
                             // quality toggle
-                            if ui
-                                .add(RadioButton::new(
-                                    view.state.captures.screen.quality == CaptureQuality::Quality,
-                                    "Quality",
-                                ))
-                                .clicked()
-                            {
-                                if view.state.captures.screen.quality == CaptureQuality::Quality {
-                                    return; // don't restart for no reason
-                                }
-                                view.state.captures.screen.quality = CaptureQuality::Quality;
-                                if !view.state.capturing.screen {
-                                    return;
-                                } // don't start if not capturing
-                                // stop capture
-                                let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                    view.mutex.clone(),
-                                    Command::Capture(CaptureCommand::Stop, CaptureType::Screen),
-                                ));
-                                // start capture
-                                let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                    view.mutex.clone(),
-                                    Command::Capture(
-                                        CaptureCommand::Start(CaptureQuality::Quality),
-                                        CaptureType::Screen,
-                                    ),
-                                ));
-                            }
-                            // speed toggle
-
-                            if ui
-                                .add(RadioButton::new(
-                                    view.state.captures.screen.quality == CaptureQuality::Speed,
-                                    "Speed",
-                                ))
-                                .clicked()
-                            {
-                                if view.state.captures.screen.quality == CaptureQuality::Speed {
-                                    return; // don't restart for no reason
-                                }
-                                view.state.captures.screen.quality = CaptureQuality::Speed;
-                                if !view.state.capturing.screen {
-                                    return;
-                                } // don't start if not capturing
-                                // stop capture
-                                let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                    view.mutex.clone(),
-                                    Command::Capture(CaptureCommand::Stop, CaptureType::Screen),
-                                ));
-                                // start capture
-                                let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                    view.mutex.clone(),
-                                    Command::Capture(
-                                        CaptureCommand::Start(CaptureQuality::Speed),
-                                        CaptureType::Screen,
-                                    ),
-                                ));
-                            }
+                            ui.add_enabled_ui(view.state.capturing.screen, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("Quality: ");
+                                    ui.radio_value(
+                                        &mut view.state.captures.screen.quality,
+                                        CaptureQuality::Quality,
+                                        "Slow",
+                                    );
+                                    ui.radio_value(
+                                        &mut view.state.captures.screen.quality,
+                                        CaptureQuality::Quality,
+                                        "Fast",
+                                    );
+                                });
+                            });
                         });
                 });
             CollapsingHeader::new("Utility")
