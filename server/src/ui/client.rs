@@ -168,7 +168,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                     );
                                     ui.radio_value(
                                         &mut view.state.captures.screen.quality,
-                                        CaptureQuality::Quality,
+                                        CaptureQuality::Speed,
                                         "Fast",
                                     );
                                 });
