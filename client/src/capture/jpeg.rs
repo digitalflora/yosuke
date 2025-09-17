@@ -1,6 +1,4 @@
-use std::io::Cursor;
-
-use image::{ColorType, ImageBuffer, Rgb, imageops::FilterType};
+use image::{ImageBuffer, Rgb, imageops::FilterType};
 use jpeg_encoder::Encoder;
 use shared::commands::VideoPacket;
 
@@ -9,7 +7,7 @@ pub struct FrameSize {
     pub height: u32,
 }
 
-pub fn encode_fast(frame: Vec<u8>, from: FrameSize, to: FrameSize) -> VideoPacket {
+pub fn encode_fast(frame: Vec<u8>, from: FrameSize, to: FrameSize, quality: u8) -> VideoPacket {
     let rgb: Vec<u8> = frame
         .chunks(4)
         .flat_map(|bgra| [bgra[2], bgra[1], bgra[0]])
@@ -23,7 +21,7 @@ pub fn encode_fast(frame: Vec<u8>, from: FrameSize, to: FrameSize) -> VideoPacke
     };
 
     let mut jpeg_data = Vec::new();
-    let encoder = Encoder::new(&mut jpeg_data, 60);
+    let encoder = Encoder::new(&mut jpeg_data, quality);
     encoder
         .encode(
             final_img.as_raw(),

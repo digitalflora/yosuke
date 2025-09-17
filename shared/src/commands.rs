@@ -1,8 +1,14 @@
 use bincode::{Decode, Encode};
 
+#[derive(Encode, Decode, Clone, PartialEq)]
+pub enum CaptureQuality {
+    Speed,
+    Quality,
+}
+
 #[derive(Encode, Decode, Clone)]
 pub enum CaptureCommand {
-    Start,
+    Start(CaptureQuality),
     Stop,
 }
 #[derive(Encode, Decode, PartialEq, Eq, Hash, Clone)] // thats a lot

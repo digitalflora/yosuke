@@ -12,6 +12,7 @@ mod view;
 pub fn main(mouthpiece: UiMouthpiece) -> eframe::Result<()> {
     println!("[*] ui spawned");
     let options = NativeOptions {
+        hardware_acceleration: eframe::HardwareAcceleration::Preferred, // is it really this easy...?
         viewport: ViewportBuilder::default()
             .with_inner_size([720.0, 560.0])
             .with_icon(load_icon()),

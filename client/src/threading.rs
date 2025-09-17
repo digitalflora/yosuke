@@ -68,7 +68,7 @@ impl ActiveCommands {
 
         // start capturing
         let mut running: Option<Arc<AtomicBool>> = None;
-        if let Command::Capture(CaptureCommand::Start, capture_type) = &command.command {
+        if let Command::Capture(CaptureCommand::Start(_), capture_type) = &command.command {
             let mut captures = self.captures.lock().await;
             if captures.contains_key(capture_type) {
                 let refusal = bincode::encode_to_vec(
@@ -98,7 +98,7 @@ impl ActiveCommands {
         let handle = smol::spawn(async move {
             smol::unblock(move || handler::main(command, tx_clone, running)).await;
             // cleanup after running the capture loop
-            if let Command::Capture(CaptureCommand::Start, capture_type) = &command_clone {
+            if let Command::Capture(CaptureCommand::Start(_), capture_type) = &command_clone {
                 let mut captures = captures.lock().await;
                 captures.remove(capture_type);
             }

@@ -64,7 +64,7 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                         if let Some(client) = view.state.clients.get_mut(&mutex) {
                             match capture_type {
                                 CaptureType::Screen => {
-                                    client.state.captures.screen = Some(image);
+                                    client.state.captures.screen.data = Some(image);
                                     client.state.textures.screen = None;
                                 }
                                 _ => { /* dont care about audio */ }

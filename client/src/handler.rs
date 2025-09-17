@@ -53,12 +53,12 @@ pub fn main(command: BaseCommand, tx: Sender<Vec<u8>>, capture_running: Option<A
         ),
         Command::Capture(capture_command, capture_type) => {
             match capture_command {
-                CaptureCommand::Start => {
+                CaptureCommand::Start(quality) => {
                     ////////////////////////////
                     match capture_type {
                         CaptureType::Screen => {
                             if let Some(running) = capture_running {
-                                capture::screen::main(command.id, tx, running);
+                                capture::screen::main(command.id, tx, running, quality);
                             }
                         }
                         _ => { /* not done!! */ }

@@ -1,13 +1,11 @@
 use scrap::{Capturer, Display};
-use shared::commands::{BaseResponse, CapturePacket, CaptureType, Response, VideoPacket};
+use shared::commands::{
+    BaseResponse, CapturePacket, CaptureQuality, CaptureType, Response, VideoPacket,
+};
 use smol::channel::Sender;
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-    thread,
-    time::Duration,
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
 };
 #[cfg(windows)]
 use winapi;
@@ -40,7 +38,7 @@ fn stride(frame: &[u8], width: usize, height: usize) -> Vec<u8> {
     fixed_data
 }
 
-pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
+pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: CaptureQuality) {
     // Set DPI awareness to system aware
     #[cfg(windows)]
     unsafe {
@@ -53,7 +51,10 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
     let mut capturer = Capturer::new(display).unwrap();
 
     let (width, height) = (capturer.width(), capturer.height());
-    let resize_factor = 4.0;
+    let mut resize_factor = 4.0;
+    if quality == CaptureQuality::Quality {
+        resize_factor = 2.0;
+    }
     let (target_width, target_height) = (
         (width as f32 / resize_factor) as usize,
         (height as f32 / resize_factor) as usize,
@@ -75,6 +76,11 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
 
             //let compress_start = Instant::now();
 
+            let mut jpeg_quality = 60;
+            if quality == CaptureQuality::Quality {
+                jpeg_quality = 80;
+            }
+
             let packet: VideoPacket = encode_fast(
                 fixed_frame,
                 FrameSize {
@@ -87,6 +93,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
                     width: target_width as u32,
                     height: target_height as u32,
                 },
+                jpeg_quality,
             );
 
             //let compress_time = compress_start.elapsed();
