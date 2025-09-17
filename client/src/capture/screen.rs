@@ -39,61 +39,80 @@ fn stride(frame: &[u8], width: usize, height: usize) -> Vec<u8> {
 }
 
 pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>) {
-    let display = Display::primary().unwrap();
-    let (width, height) = (display.width(), display.height());
-    let mut capturer = Capturer::new(display).unwrap();
-    let resize_factor = 2.5;
-    let (target_width, target_height) = (
-        (width as f32 / resize_factor) as usize,
-        (height as f32 / resize_factor) as usize,
-    );
-
+    let mut kickstart = 0;
     loop {
         if !running.load(Ordering::SeqCst) {
             println!("[v] signal to stop capturing! breaking loop");
             break;
         }
-
-        // let frame_start = Instant::now();
-        if let Ok(frame) = capturer.frame() {
-            //let capture_start = Instant::now();
-            println!("[*] got frame of screen capture");
-            //let capture_time = capture_start.elapsed();
-
-            let fixed_frame = stride(&frame, width, height);
-
-            //let compress_start = Instant::now();
-
-            let packet: VideoPacket = encode_fast(
-                fixed_frame,
-                FrameSize {
-                    // from
-                    width: width as u32,
-                    height: height as u32,
-                },
-                FrameSize {
-                    // to
-                    width: target_width as u32,
-                    height: target_height as u32,
-                },
-            );
-
-            //let compress_time = compress_start.elapsed();
-
-            //println!("[*] captured in {:?}", capture_time);
-            //println!("[*] compressed in {:?}", compress_time);
-
-            send(
-                BaseResponse {
-                    id: id,
-                    response: Response::CapturePacket(
-                        CaptureType::Screen,
-                        CapturePacket::Video(packet),
-                    ),
-                },
-                &tx,
-            );
+        if kickstart >= 2 {
+            println!("[x] tried to kickstart more than once, something must be broken");
+            break;
         }
-        thread::sleep(Duration::from_millis(50)); // send it flying
+
+        let display = Display::primary().unwrap();
+        let (width, height) = (display.width(), display.height());
+        let mut capturer = Capturer::new(display).unwrap();
+        let resize_factor = 2.5;
+        let (target_width, target_height) = (
+            (width as f32 / resize_factor) as usize,
+            (height as f32 / resize_factor) as usize,
+        );
+
+        let mut bad_frames = 0;
+        loop {
+            // let frame_start = Instant::now();
+            if let Ok(frame) = capturer.frame() {
+                //let capture_start = Instant::now();
+                println!("[*] got frame of screen capture");
+                //let capture_time = capture_start.elapsed();
+
+                let fixed_frame = stride(&frame, width, height);
+
+                if fixed_frame.len() != (width * height * 4) {
+                    bad_frames += 1;
+                    println!("[x] bad frame by wrong size!");
+                    if bad_frames >= 10 {
+                        println!("Too many bad frames, resetting Capturer");
+                        kickstart += 1;
+                        break;
+                    }
+                    continue;
+                }
+
+                //let compress_start = Instant::now();
+
+                let packet: VideoPacket = encode_fast(
+                    fixed_frame,
+                    FrameSize {
+                        // from
+                        width: width as u32,
+                        height: height as u32,
+                    },
+                    FrameSize {
+                        // to
+                        width: target_width as u32,
+                        height: target_height as u32,
+                    },
+                );
+
+                //let compress_time = compress_start.elapsed();
+
+                //println!("[*] captured in {:?}", capture_time);
+                //println!("[*] compressed in {:?}", compress_time);
+
+                send(
+                    BaseResponse {
+                        id: id,
+                        response: Response::CapturePacket(
+                            CaptureType::Screen,
+                            CapturePacket::Video(packet),
+                        ),
+                    },
+                    &tx,
+                );
+            }
+            // thread::sleep(Duration::from_millis(50)); // send it flying
+        }
     }
 }
