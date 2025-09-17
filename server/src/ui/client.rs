@@ -158,7 +158,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
 
                             //////////////////////////////////////
                             // quality toggle
-                            ui.add_enabled_ui(view.state.capturing.screen, |ui| {
+                            ui.add_enabled_ui(!view.state.capturing.screen, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.label("Quality: ");
                                     ui.radio_value(
