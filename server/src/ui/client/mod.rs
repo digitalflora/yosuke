@@ -58,13 +58,15 @@ impl ClientView {
                 },
                 captures: ClientViewCaptures {
                     screen: ClientViewCapture {
+                        max_scale: 1.5,
                         quality: CaptureQuality::Speed,
                         scale: 1.0,
                         data: None,
                     },
                     webcam: ClientViewCapture {
+                        max_scale: 1.0,
                         quality: CaptureQuality::Speed,
-                        scale: 1.0,
+                        scale: 0.35,
                         data: None,
                     },
                 },

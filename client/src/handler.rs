@@ -90,6 +90,11 @@ pub fn main(
                                 capture::screen::main(command.id, tx, running, quality);
                             }
                         }
+                        CaptureType::Camera => {
+                            if let Some(running) = capture_running {
+                                capture::webcam::main(command.id, tx, running, quality);
+                            }
+                        }
                         _ => { /* not done!! */ }
                     }
                 }

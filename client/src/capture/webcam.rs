@@ -1,0 +1,248 @@
+use nokhwa::{
+    Camera, NokhwaError,
+    pixel_format::RgbAFormat,
+    utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType},
+};
+use shared::commands::{BaseResponse, CapturePacket, CaptureQuality, CaptureType, Response};
+use smol::channel::Sender;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+use std::time::Duration;
+
+use crate::{
+    capture::jpeg::{FrameSize, encode_fast},
+    handler::send,
+};
+
+pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: CaptureQuality) {
+    // Query available cameras with error handling
+    let cameras = match nokhwa::query(nokhwa::utils::ApiBackend::Auto) {
+        Ok(cameras) => cameras,
+        Err(e) => {
+            eprintln!("[!] Failed to query cameras: {}", e);
+            return;
+        }
+    };
+
+    if cameras.is_empty() {
+        eprintln!("[!] No cameras found");
+        return;
+    }
+
+    let index = CameraIndex::Index(0);
+    let requested =
+        RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
+
+    // Create camera with error handling
+    let mut camera = match Camera::new(index, requested) {
+        Ok(camera) => camera,
+        Err(e) => {
+            eprintln!("[!] Failed to create camera: {}", e);
+            match e {
+                NokhwaError::OpenDeviceError(msg, _) => {
+                    eprintln!("[!] Camera might be in use by another application: {}", msg);
+                }
+                NokhwaError::GetPropertyError { property, error } => {
+                    eprintln!(
+                        "[!] Failed to get camera property '{}': {}",
+                        property, error
+                    );
+                }
+                _ => {
+                    eprintln!("[!] Camera initialization failed with unexpected error");
+                }
+            }
+            return;
+        }
+    };
+
+    // Open camera stream with retry logic for busy camera
+    let mut retry_count = 0;
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAY: Duration = Duration::from_secs(2);
+
+    loop {
+        match camera.open_stream() {
+            Ok(()) => {
+                println!("[*] Successfully opened camera stream");
+                break;
+            }
+            Err(e) => {
+                eprintln!("[!] Failed to open camera stream: {}", e);
+
+                match e {
+                    NokhwaError::OpenStreamError(msg) => {
+                        if msg.contains("busy")
+                            || msg.contains("in use")
+                            || msg.contains("occupied")
+                        {
+                            eprintln!("[!] Camera is busy/in use by another application");
+
+                            if retry_count < MAX_RETRIES {
+                                retry_count += 1;
+                                eprintln!(
+                                    "[*] Retrying in {} seconds... (attempt {}/{})",
+                                    RETRY_DELAY.as_secs(),
+                                    retry_count,
+                                    MAX_RETRIES
+                                );
+                                std::thread::sleep(RETRY_DELAY);
+                                continue;
+                            } else {
+                                eprintln!("[!] Max retries reached. Camera remains busy.");
+                                return;
+                            }
+                        } else {
+                            eprintln!("[!] Stream error: {}", msg);
+                            return;
+                        }
+                    }
+                    NokhwaError::SetPropertyError {
+                        property,
+                        value,
+                        error,
+                    } => {
+                        eprintln!(
+                            "[!] Failed to set property '{}' to '{}': {}",
+                            property, value, error
+                        );
+                        return;
+                    }
+                    _ => {
+                        eprintln!("[!] Unexpected error opening stream");
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    println!("[*] cam name:   {:?}", camera.info().human_name());
+    println!("[*] cam format: {:?}", camera.camera_format());
+
+    let mut consecutive_errors = 0;
+    const MAX_CONSECUTIVE_ERRORS: u32 = 10;
+
+    loop {
+        if !running.load(Ordering::SeqCst) {
+            println!("[v] signal to stop capturing! breaking loop");
+            break;
+        }
+
+        match camera.frame() {
+            Ok(frame) => {
+                println!("[*] got camera frame");
+                consecutive_errors = 0; // Reset error counter on success
+
+                let (width, height, mut buffer) = if frame.source_frame_format()
+                    == FrameFormat::MJPEG
+                {
+                    println!("[*] frame was MJPEG");
+                    match image::load_from_memory(frame.buffer()) {
+                        Ok(image) => {
+                            let buffer = image.to_rgba8().into_raw();
+                            (image.width(), image.height(), buffer)
+                        }
+                        Err(e) => {
+                            eprintln!("[!] Failed to decode MJPEG frame: {}", e);
+                            consecutive_errors += 1;
+                            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                                eprintln!("[!] Too many consecutive decode errors, stopping");
+                                break;
+                            }
+                            continue;
+                        }
+                    }
+                } else {
+                    println!("[*] frame was not MJPEG");
+                    let (width, height) = (frame.resolution().width(), frame.resolution().height());
+                    (width, height, frame.buffer().to_vec())
+                };
+
+                // The jpeg encoder expects BGRA, but nokhwa provides RGBA. Swap R and B.
+                for chunk in buffer.chunks_mut(4) {
+                    if chunk.len() == 4 {
+                        chunk.swap(0, 2);
+                    }
+                }
+
+                let (max_width, max_height) = match quality {
+                    CaptureQuality::Quality => (1280.0, 720.0),
+                    CaptureQuality::Speed => (640.0, 480.0),
+                };
+
+                let aspect_ratio = width as f32 / height as f32;
+                let (target_width, target_height) = if aspect_ratio > max_width / max_height {
+                    (max_width as u32, (max_width / aspect_ratio) as u32)
+                } else {
+                    ((max_height * aspect_ratio) as u32, max_height as u32)
+                };
+
+                let mut jpeg_quality = 60;
+                if quality == CaptureQuality::Quality {
+                    jpeg_quality = 80;
+                }
+
+                let packet = encode_fast(
+                    buffer,
+                    FrameSize { width, height },
+                    FrameSize {
+                        width: target_width as u32,
+                        height: target_height as u32,
+                    },
+                    jpeg_quality,
+                );
+
+                println!("[*] sending response");
+                send(
+                    BaseResponse {
+                        id: id,
+                        response: Response::CapturePacket(
+                            CaptureType::Camera,
+                            CapturePacket::Video(packet),
+                        ),
+                    },
+                    &tx,
+                );
+            }
+            Err(e) => {
+                consecutive_errors += 1;
+                eprintln!(
+                    "[!] Failed to capture frame (error {}/{}): {}",
+                    consecutive_errors, MAX_CONSECUTIVE_ERRORS, e
+                );
+
+                match e {
+                    NokhwaError::ReadFrameError(msg) => {
+                        if msg.contains("busy") || msg.contains("disconnected") {
+                            eprintln!("[!] Camera became unavailable during capture");
+                            break;
+                        }
+                    }
+                    NokhwaError::GetPropertyError { property, error } => {
+                        eprintln!("[!] Property access error for '{}': {}", property, error);
+                    }
+                    _ => {
+                        eprintln!("[!] Unexpected frame capture error");
+                    }
+                }
+
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                    eprintln!("[!] Too many consecutive frame errors, stopping capture");
+                    break;
+                }
+
+                // Brief pause before retrying
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+    }
+
+    // Cleanup
+    println!("[*] Stopping camera capture and cleaning up");
+    if let Err(e) = camera.stop_stream() {
+        eprintln!("[!] Error stopping camera stream: {}", e);
+    }
+}

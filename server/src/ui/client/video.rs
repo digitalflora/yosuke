@@ -213,7 +213,7 @@ pub fn render(
         );
     } else {
         let max_scale = if capture.quality == CaptureQuality::Quality {
-            1.5
+            capture.max_scale
         } else {
             1.0
         };

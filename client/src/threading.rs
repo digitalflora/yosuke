@@ -39,10 +39,10 @@ impl ActiveCommands {
         if let Command::Capture(CaptureCommand::Stop, capture_type) = &command.command {
             let mut captures = self.captures.lock().await;
             if let Some(task_state) = captures.remove(capture_type) {
+                task_state.active.store(false, Ordering::SeqCst);
                 let mut tasks = self.tasks.lock().await;
-                if let Some(_task) = tasks.remove(&task_state.id) {
-                    task_state.active.store(false, Ordering::SeqCst);
-                    //task.cancel().await;
+                if let Some(task) = tasks.remove(&task_state.id) {
+                    task.cancel().await;
                 }
             }
             return;

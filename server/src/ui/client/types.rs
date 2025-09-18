@@ -44,6 +44,7 @@ pub struct ClientViewInputState {
 
 pub struct ClientViewCapture {
     pub quality: CaptureQuality,
+    pub max_scale: f32,
     pub scale: f32,
     pub data: Option<ColorImage>,
 }

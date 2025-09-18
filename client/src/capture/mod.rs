@@ -1,5 +1,6 @@
 pub mod jpeg;
 pub mod screen;
+pub mod webcam;
 /*/
 #[derive(Clone)]
 pub struct CaptureState {

@@ -66,6 +66,10 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                                     client.state.captures.screen.data = Some(image);
                                     client.state.textures.screen = None;
                                 }
+                                CaptureType::Camera => {
+                                    client.state.captures.webcam.data = Some(image);
+                                    client.state.textures.webcam = None;
+                                }
                                 _ => { /* dont care about audio */ }
                             }
                         }
