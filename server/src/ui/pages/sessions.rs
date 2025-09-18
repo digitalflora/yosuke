@@ -9,7 +9,7 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
 
     ui.horizontal(|ui| match view.state.listening {
         false => {
-            if ui.button("Listen").clicked() {
+            if ui.button("▶  Listen").clicked() {
                 let _ = view
                     .mouthpiece
                     .to_server
@@ -17,7 +17,7 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
             }
         }
         true => {
-            if ui.button("Stop").clicked() {
+            if ui.button("⏹  Stop").clicked() {
                 let _ = view
                     .mouthpiece
                     .to_server

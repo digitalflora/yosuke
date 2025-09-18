@@ -7,12 +7,12 @@ edition = "2024"
 shared = { path = "../shared" }
 bincode = "2.0.1"
 smol = "2.0.2"
-winsafe = { version = "0.0.25", features = ["user"] }
 aes-gcm = "0.10.3"
 scrap = "0.5.0"
 image = "0.25.8"
 jpeg-encoder = "0.6.1"
+is_elevated = "0.1.2"
 
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["winuser"] }
+winapi = { version = "0.3.9", features = ["winuser", "winbase", "shellapi", "winerror"] }

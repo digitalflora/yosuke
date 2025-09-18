@@ -1,14 +1,17 @@
+use std::{ptr::null_mut};
+
 use shared::commands::{MessageBoxArgs, Response};
-use winsafe::co;
+use winapi::um::winuser::{MessageBoxW, MB_ICONINFORMATION, MB_OK};
+
+use crate::wstring;
 
 pub fn main(args: MessageBoxArgs) -> Result<Response, Box<dyn std::error::Error>> {
-    let title = &args.title;
-    let text = &args.text;
+    let title = wstring(&args.title);
+    let text = wstring(&args.text);
 
-    let hwnd = winsafe::HWND::GetDesktopWindow();
-    let msgbox = hwnd.MessageBox(text, title, co::MB::OK | co::MB::ICONINFORMATION);
-    match msgbox {
-        Ok(_) => Ok(Response::Success),
-        Err(err) => Err(Box::new(err)),
-    }
+    unsafe {
+        MessageBoxW(null_mut(), text.as_ptr(), title.as_ptr(), MB_OK | MB_ICONINFORMATION);
+    };
+
+    Ok(Response::Success)
 }

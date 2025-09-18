@@ -13,10 +13,10 @@ pub fn render(view: &mut View, ctx: &Context) {
                     bottom: 6,
                 })
                 .show(ui, |ui| {
-                    if ui.button("💻  Sessions").clicked() {
+                    if ui.button("🖧  Sessions").clicked() {
                         view.state.page = ViewPage::Sessions;
                     }
-                    if ui.button("🔧  Builder").clicked() {
+                    if ui.button("🛠  Builder").clicked() {
                         view.state.page = ViewPage::Builder;
                     }
                 })

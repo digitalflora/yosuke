@@ -22,7 +22,7 @@ pub fn render(view: &mut View, ui: &mut Ui) {
             ui.add(TextEdit::singleline(&mut view.state.builder.port).desired_width(64.0));
             ui.end_row();
 
-            if ui.button("Build").clicked() {
+            if ui.button("🔧  Build").clicked() {
                 if let Ok(num) = view.state.builder.port.parse::<u16>() {
                     let _ =
                         view.mouthpiece
