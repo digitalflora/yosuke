@@ -1,3 +1,4 @@
+// god bless claude's little cototn socks
 use nokhwa::{
     Camera, NokhwaError,
     pixel_format::RgbAFormat,
@@ -60,7 +61,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
 
     // Open camera stream with retry logic for busy camera
     let mut retry_count = 0;
-    const MAX_RETRIES: u32 = 3;
+    const MAX_RETRIES: u32 = 2;
     const RETRY_DELAY: Duration = Duration::from_secs(2);
 
     loop {
@@ -124,6 +125,18 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
 
     let mut consecutive_errors = 0;
     const MAX_CONSECUTIVE_ERRORS: u32 = 10;
+
+    if quality == CaptureQuality::Speed {
+        if let Err(err) = camera.set_resolution(nokhwa::utils::Resolution {
+            width_x: 640,
+            height_y: 480,
+        }) {
+            eprintln!("[!] Failed to set resolution: {}", err);
+        };
+        if let Err(err) = camera.set_frame_rate(30) {
+            eprintln!("[!] Failed to set frame rate: {}", err);
+        };
+    }
 
     loop {
         if !running.load(Ordering::SeqCst) {
