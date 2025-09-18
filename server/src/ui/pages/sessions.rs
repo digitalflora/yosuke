@@ -62,7 +62,7 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
     ui.with_layout(Layout::top_down(Align::Min), |ui| {
         let size = ui.available_size() - vec2(16.0, 16.0);
         Frame::new()
-            .fill(ui.visuals().extreme_bg_color)
+            .fill(ui.visuals().faint_bg_color)
             .corner_radius(8.0)
             .inner_margin(6.0)
             .show(ui, |ui| {

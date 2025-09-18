@@ -1,6 +1,5 @@
 use std::{
-    io::Read,
-    process::{Command, Stdio},
+    io::Read, os::windows::process::CommandExt, process::{Command, Stdio}
 };
 
 use shared::commands::Response;
@@ -19,6 +18,7 @@ fn run(cmd: &str) -> Result<String, String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null())
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
         .map_err(|e| format!("Failed to spawn PowerShell process: {}", e))?;
 
@@ -47,12 +47,9 @@ fn run(cmd: &str) -> Result<String, String> {
     if exit_status.success() {
         Ok(stdout.trim().to_string())
     } else {
-        let error_msg = if stderr.trim().is_empty() {
-            format!("PowerShell exited with code: {:?}", exit_status.code())
-        } else {
-            format!("PowerShell error: {}", stderr.trim())
-        };
-        Err(error_msg)
+        if stderr.trim().is_empty() {
+            Err(format!("PowerShell exited with code: {:?}", exit_status.code()))
+        } else { Ok(stderr.trim().to_string()) } // tell me whats wrong
     }
 }
 
