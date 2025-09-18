@@ -52,6 +52,7 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                                 ClientView::new(
                                     socket.to_string(),
                                     mutex,
+                                    info.elevated, // grab this because it can change
                                     info,
                                     view.mouthpiece.to_manager.clone(),
                                 ),

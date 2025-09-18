@@ -59,6 +59,7 @@ pub enum Response {
 #[derive(Encode, Decode)]
 pub struct ComputerInfoResponse {
     pub hostname: String,
+    pub elevated: bool, // did the client launch as admin
 }
 
 #[derive(Encode, Decode)]

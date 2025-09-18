@@ -57,6 +57,7 @@ pub struct ClientViewState {
 }
 pub struct ClientView {
     pub mutex: String,
+    pub elevated: bool, // do we have admin on the client
     pub state: ClientViewState,
     pub socket: String,
     pub info: ComputerInfoResponse,
@@ -66,11 +67,13 @@ impl ClientView {
     pub fn new(
         socket: String,
         mutex: String,
+        elevated: bool,
         info: ComputerInfoResponse,
         sender: UnboundedSender<UiManagerCommand>,
     ) -> Self {
         Self {
             mutex: mutex,
+            elevated: elevated, // assume no
             socket: socket,
             state: ClientViewState {
                 visible: false,
@@ -193,6 +196,14 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                     }),
                                 ));
                             }
+                        });
+                    CollapsingHeader::new("Elevate")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            ui.label("If UAC is enabled on the client, clicking this button will prompt the user, and requires administrative privileges.");
+                            if ui.button("Elevate").clicked() {
+                                println!("[*] we would send a command here");
+                            };
                         })
                 });
 
