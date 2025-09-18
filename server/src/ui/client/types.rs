@@ -1,6 +1,5 @@
 use std::time::Instant;
 
-use device_query::DeviceState;
 use egui::{ColorImage, TextureHandle};
 use shared::commands::CaptureQuality;
 
