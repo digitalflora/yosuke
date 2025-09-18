@@ -22,9 +22,8 @@ pub struct WhitelistedClient {
 pub enum ServerMessage {
     Listening,
     Stopped,
-
-    NewConnection(WhitelistedClient),
-    Receive(String, Vec<u8>), // mutex, data
+    //NewConnection(WhitelistedClient),
+    //Receive(String, Vec<u8>), // mutex, data
 }
 
 pub enum UiMessage {

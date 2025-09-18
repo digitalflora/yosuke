@@ -69,7 +69,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
         // let frame_start = Instant::now();
         if let Ok(frame) = capturer.frame() {
             //let capture_start = Instant::now();
-            println!("[*] got frame of screen capture");
+            // println!("[*] got frame of screen capture");
             //let capture_time = capture_start.elapsed();
 
             let fixed_frame = stride(&frame, width, height);

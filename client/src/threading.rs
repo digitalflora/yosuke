@@ -7,10 +7,11 @@ use std::{
     thread,
 };
 
+use enigo::{Enigo, Settings};
 use shared::commands::{BaseCommand, BaseResponse, CaptureCommand, CaptureType, Command, Response};
 use smol::{Task, channel::Sender, lock::Mutex};
 
-use crate::handler;
+use crate::{handler, input};
 
 pub struct CaptureTaskState {
     id: u64,
@@ -19,16 +20,18 @@ pub struct CaptureTaskState {
 pub struct ActiveCommands {
     tasks: Arc<Mutex<HashMap<u64, Task<()>>>>,
     captures: Arc<Mutex<HashMap<CaptureType, CaptureTaskState>>>, // type, command id
+    enigo: Enigo,
 }
 impl ActiveCommands {
     pub fn new() -> Self {
         Self {
             tasks: Arc::new(Mutex::new(HashMap::new())),
             captures: Arc::new(Mutex::new(HashMap::new())),
+            enigo: Enigo::new(&Settings::default()).unwrap(),
         }
     }
 
-    pub async fn spawn(&self, command: BaseCommand, tx: Sender<Vec<u8>>) {
+    pub async fn spawn(&mut self, command: BaseCommand, tx: Sender<Vec<u8>>) {
         let id = command.id;
         let tasks = Arc::clone(&self.tasks);
 
@@ -44,6 +47,12 @@ impl ActiveCommands {
             }
             return;
         }
+
+        // handle input before we try to refuse to reserve a thread
+        // design choice: a whole new thread is not needed to handle input bruh
+        if input::main(&command, &mut self.enigo) {
+            return; // stop running if we handled an input this cycle
+        };
 
         let parallelism = thread::available_parallelism()
             .map(|n| n.get())

@@ -10,7 +10,7 @@ use crate::{
 pub fn send(response: BaseResponse, tx: &Sender<Vec<u8>>) {
     match tx.try_send(bincode::encode_to_vec(response, bincode::config::standard()).unwrap()) {
         Ok(_) => {
-            println!("[x] sent frame");
+            // println!("[x] sent frame");
         }
         Err(smol::channel::TrySendError::Full(_)) => {
             println!("[x] congested, dropped response");
@@ -21,7 +21,12 @@ pub fn send(response: BaseResponse, tx: &Sender<Vec<u8>>) {
     };
 }
 
-pub fn main(command: BaseCommand, tx: Sender<Vec<u8>>, capture_running: Option<Arc<AtomicBool>>) {
+pub fn main(
+    command: BaseCommand,
+    tx: Sender<Vec<u8>>,
+    capture_running: Option<Arc<AtomicBool>>,
+    //enigo: Arc<Mutex<Enigo>>, // for input handling
+) {
     match command.command {
         Command::ComputerInfo => {
             send(
@@ -91,5 +96,6 @@ pub fn main(command: BaseCommand, tx: Sender<Vec<u8>>, capture_running: Option<A
                 _ => { /* dafuq */ }
             }
         }
+        _ => {}
     };
 }

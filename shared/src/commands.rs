@@ -1,5 +1,7 @@
 use bincode::{Decode, Encode};
 
+use crate::input::InputType;
+
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub enum CaptureQuality {
     Speed,
@@ -45,6 +47,7 @@ pub enum Command {
     PowerShell(String), // string is the command
     MessageBox(MessageBoxArgs),
     Capture(CaptureCommand, CaptureType),
+    Input(InputType),
 }
 #[derive(Encode, Decode, Clone)]
 pub struct MessageBoxArgs {

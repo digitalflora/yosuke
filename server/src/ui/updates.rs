@@ -15,17 +15,15 @@ pub fn server(view: &mut View, _ctx: &Context) {
             }
             ServerMessage::Stopped => {
                 view.state.listening = false;
-            }
-
-            ServerMessage::NewConnection(client) => {
-                println!(
-                    "[*][updates()] whitelisted mutex {} has connected!",
-                    client.mutex
-                );
-            }
-            ServerMessage::Receive(_mutex, _data) => {
-                println!("[*][updates()] implement receive");
-            }
+            } /*ServerMessage::NewConnection(client) => {
+                  println!(
+                      "[*][updates()] whitelisted mutex {} has connected!",
+                      client.mutex
+                  );
+              }
+              ServerMessage::Receive(_mutex, _data) => {
+                  println!("[*][updates()] implement receive");
+              }*/
         }
     }
 }
@@ -35,7 +33,7 @@ pub fn manager(view: &mut View, _ctx: &Context) {
     while let Ok(msg) = view.mouthpiece.from_manager.try_recv() {
         match msg {
             UiManagerResponse::GetResponse(mutex, response) => {
-                println!("[*][updates] sup");
+                // println!("[*][updates] sup");
 
                 match response {
                     ProcessedResponse::Success => {
@@ -57,11 +55,11 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                                     view.mouthpiece.to_manager.clone(),
                                 ),
                             );
-                            println!("{}", view.state.clients.len());
+                            // println!("{}", view.state.clients.len());
                         }
                     }
                     ProcessedResponse::CapturePacket(capture_type, image) => {
-                        println!("[*] got img");
+                        // println!("[*] got img");
                         if let Some(client) = view.state.clients.get_mut(&mutex) {
                             match capture_type {
                                 CaptureType::Screen => {

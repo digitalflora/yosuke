@@ -43,7 +43,7 @@ impl Encryption {
 
         match self.cipher.decrypt(&nonce, encrypted) {
             Ok(decrypted) => {
-                println!("[✓] Decrypted payload");
+                //println!("[✓] Decrypted payload");
                 Ok(decrypted)
             }
             Err(e) => {

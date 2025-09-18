@@ -1,6 +1,4 @@
-use egui::{
-    Align, Color32, Frame, Grid, Layout, RichText, ScrollArea, TextEdit, TextStyle, Ui, vec2,
-};
+use egui::{Align, Frame, Grid, Layout, RichText, ScrollArea, TextEdit, TextStyle, Ui, vec2};
 
 use crate::{
     types::{BuilderSettings, UiBuilderMessage},

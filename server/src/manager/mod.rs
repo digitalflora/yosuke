@@ -37,7 +37,7 @@ impl ClientManager {
                     match client_command {
                         ClientResponse::Read(mutex, buf) => {
                             let (response, _size): (BaseResponse, usize) = bincode::decode_from_slice(&buf, bincode::config::standard()).unwrap();
-                            println!("[*][{}] sent data", mutex);
+                            // println!("[*][{}] sent data", mutex);
                             // pass to UI?
 
                             // PROCESS!!
@@ -91,7 +91,7 @@ impl ClientManager {
                     }
                 }
                 Some(ui_command) = self.mouthpiece.from_ui.recv() => {
-                    println!("[*] received command from ui");
+                    // println!("[*] received command from ui");
                     match ui_command {
                         UiManagerCommand::SendCommand(mutex, command) => {
                             if let Some(client) = self.clients.get_mut(&mutex) {

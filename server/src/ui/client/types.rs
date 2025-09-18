@@ -1,6 +1,8 @@
+use std::time::Instant;
+
+use device_query::DeviceState;
 use egui::{ColorImage, TextureHandle};
 use shared::commands::CaptureQuality;
-
 
 pub struct MsgboxView {
     pub title: String,
@@ -22,16 +24,23 @@ impl Default for MsgboxView {
 pub struct ClientViewCaptureState {
     pub screen: bool,
     pub webcam: bool,
-    pub mic: bool,
+    //pub mic: bool,
 }
 impl Default for ClientViewCaptureState {
     fn default() -> Self {
         Self {
             screen: false,
             webcam: false,
-            mic: false,
+            //mic: false,
         }
     }
+}
+
+pub struct ClientViewInputState {
+    pub active: bool,
+    pub clicking: bool,
+    pub last_position: Option<(f32, f32)>,
+    pub last_update: Option<Instant>,
 }
 
 pub struct ClientViewCapture {

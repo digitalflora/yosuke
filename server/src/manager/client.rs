@@ -44,7 +44,7 @@ pub async fn task(
             stream_read = shared::net::read(&mut read) => {
                 match stream_read {
                     Ok(buf) => {
-                        println!("[*] received data from a client");
+                        // println!("[*] received data from a client");
 
                         let mut nonce = [0u8; 12];
                         nonce.copy_from_slice(&buf[..12]);
@@ -57,8 +57,10 @@ pub async fn task(
                     },
                     Err(_e) => {
                         println!("[x] error reading data from client: {}", _e);
-                        let _ = mouthpiece.to_manager.send(ClientResponse::Disconnect(mutex.clone()));
-                        return Err(_e);
+                        if _e.kind() != std::io::ErrorKind::FileTooLarge {
+                            let _ = mouthpiece.to_manager.send(ClientResponse::Disconnect(mutex.clone()));
+                            return Err(_e);
+                        }
                     }
                 }
             }
