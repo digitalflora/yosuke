@@ -72,6 +72,11 @@ pub fn manager(view: &mut View, _ctx: &Context) {
                             }
                         }
                     }
+                    ProcessedResponse::PowerShell(stdout) => {
+                        if let Some(client) = view.state.clients.get_mut(&mutex) {
+                            client.state.powershell.output = stdout;
+                        }
+                    }
                     ProcessedResponse::Error(err) => {
                         println!("[x] oopsie: {}", err);
                     }

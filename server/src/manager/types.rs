@@ -11,6 +11,7 @@ use crate::{manager::client::ClientResponse, types::WhitelistedClient};
 pub enum ProcessedResponse {
     Success,
     Error(String),
+    PowerShell(String),
     ComputerInfo(ComputerInfoResponse, SocketAddr),
     CapturePacket(CaptureType, ColorImage),
 }

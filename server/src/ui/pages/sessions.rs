@@ -1,7 +1,5 @@
 use crate::ui::view::View;
-use egui::{
-    Align, Color32, Frame, Label, Layout, RichText, ScrollArea, Sense, TextStyle, Ui, vec2,
-};
+use egui::{Align, Frame, Label, Layout, RichText, ScrollArea, Sense, TextStyle, Ui, vec2};
 use egui_extras::{Column, TableBuilder};
 
 pub fn render(view: &mut View, ui: &mut Ui) -> () {
@@ -64,7 +62,7 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
     ui.with_layout(Layout::top_down(Align::Min), |ui| {
         let size = ui.available_size() - vec2(16.0, 16.0);
         Frame::new()
-            .fill(Color32::from_hex("#121212").unwrap())
+            .fill(ui.visuals().extreme_bg_color)
             .corner_radius(8.0)
             .inner_margin(6.0)
             .show(ui, |ui| {
@@ -77,6 +75,7 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
                             RichText::new(&view.state.logs.server.join("\n"))
                                 .monospace()
                                 .size(12.0)
+                                .color(ui.visuals().text_color())
                                 .text_style(TextStyle::Monospace),
                         )
                     })

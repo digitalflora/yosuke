@@ -75,6 +75,9 @@ impl ClientManager {
                                         socket
                                     )));
                                 },
+                                Response::PowerShell(stdout) => {
+                                    let _ = self.mouthpiece.to_ui.send(UiManagerResponse::GetResponse(mutex, ProcessedResponse::PowerShell(stdout)));
+                                }
                                 // _ => {}
                             }
 
