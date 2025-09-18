@@ -2,7 +2,10 @@ use egui::{Image, Slider, TextureHandle, Ui};
 use shared::commands::{CaptureCommand, CaptureQuality, CaptureType, Command};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{manager::types::UiManagerCommand, ui::client::{types::ClientViewCapture, ClientView}};
+use crate::{
+    manager::types::UiManagerCommand,
+    ui::client::{ClientView, types::ClientViewCapture},
+};
 
 pub fn render(
     ui: &mut Ui,
@@ -12,11 +15,10 @@ pub fn render(
     capture: &mut ClientViewCapture,
     capturing: &mut bool,
     texture: &mut Option<TextureHandle>,
-
 ) {
-     if let Some(ref image) = capture.data {
+    if let Some(ref image) = capture.data {
         if texture.is_none() {
-           *texture = Some(ui.ctx().load_texture(
+            *texture = Some(ui.ctx().load_texture(
                 format!("screen_{}", mutex.clone()),
                 image.clone(),
                 Default::default(),
@@ -31,7 +33,28 @@ pub fn render(
             let scale_y = max_height / image_size.y;
             let scale = scale_x.min(scale_y).min(1.0);
             let display_size = image_size * scale * capture.scale;
-            ui.add(Image::new(texture).max_size(display_size));
+
+            let image = ui.add(Image::new(texture).max_size(display_size));
+
+            if capture_type == CaptureType::Screen {
+                if image.hovered() {
+                    println!("[*] hovering over screen!");
+                    if let Some(pos) = image.interact_pointer_pos() {
+                        let top_left = image.rect.min;
+                        let local_pos = pos - top_left;
+                        let mut scale = 4.0;
+                        if capture.quality == CaptureQuality::Quality {
+                            scale = 2.0;
+                        }
+                        let (remote_width, remote_height) =
+                            (image_size.x as f32 * scale, image_size.y as f32 * scale);
+                        println!("{}x{}", remote_width, remote_height);
+                    }
+                }
+                if image.clicked() {
+                    println!("[*] YOU SUPER LIKED ME!!!");
+                }
+            }
         }
     }
 
@@ -49,12 +72,7 @@ pub fn render(
             println!("[*] sending CaptureCommand::Start");
             let _ = sender.send(UiManagerCommand::SendCommand(
                 mutex.clone(),
-                Command::Capture(
-                    CaptureCommand::Start(
-                        capture.quality.clone(),
-                    ),
-                    capture_type,
-                ),
+                Command::Capture(CaptureCommand::Start(capture.quality.clone()), capture_type),
             ));
             *capturing = true;
         };
@@ -65,16 +83,8 @@ pub fn render(
     ui.add_enabled_ui(!*capturing, |ui| {
         ui.horizontal(|ui| {
             ui.label("Quality: ");
-            ui.radio_value(
-                &mut capture.quality,
-                CaptureQuality::Quality,
-                "Slow",
-            );
-            ui.radio_value(
-                &mut capture.quality,
-                CaptureQuality::Speed,
-                "Fast",
-            );
+            ui.radio_value(&mut capture.quality, CaptureQuality::Quality, "Slow");
+            ui.radio_value(&mut capture.quality, CaptureQuality::Speed, "Fast");
         });
     });
 

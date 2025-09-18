@@ -2,7 +2,8 @@ use core::f32;
 
 use crate::{manager::types::UiManagerCommand, ui::client::types::*};
 use egui::{
-    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton, RichText, ScrollArea, Slider, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window
+    Button, CollapsingHeader, Color32, ColorImage, Context, Frame, Id, Image, Margin, RadioButton,
+    RichText, ScrollArea, Slider, Stroke, TextEdit, TextStyle, TextureHandle, Ui, Widget, Window,
 };
 use shared::commands::{
     CaptureCommand, CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
@@ -83,13 +84,13 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
             CollapsingHeader::new("🔍  Surveillance")
                 .default_open(true)
                 .show(ui, |ui| {
-                    ui.horizontal(|ui| {
+                    //ui.horizontal(|ui| {
 
-                        ui.vertical(|ui| {
-                            CollapsingHeader::new("🖵  Screen")
+                        //ui.vertical(|ui| {
+                        CollapsingHeader::new("🖵  Screen")
                             .default_open(false)
                             .show(ui, |ui| {
-                            video::render( 
+                            video::render(
                                 ui,
                                 CaptureType::Screen,
                                 &view.mutex,
@@ -99,13 +100,13 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 &mut view.state.textures.screen,
                             );
                             });
-                        });
+                        //});
 
-                        ui.vertical(|ui| {
+                        /*ui.vertical(|ui| {
                             CollapsingHeader::new("📸  Camera")
                             .default_open(false)
                             .show(ui, |ui| {
-                            video::render( 
+                            video::render(
                                 ui,
                                 CaptureType::Camera,
                                 &view.mutex,
@@ -115,9 +116,9 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 &mut view.state.textures.webcam,
                             );
                             });
-                        });
-                        
-                    });
+                        });*/
+
+                        //});
                 });
             CollapsingHeader::new("🗁  Utility")
                 .default_open(true)
