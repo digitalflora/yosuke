@@ -21,7 +21,7 @@ where
 
     let mut buf = vec![0u8; len];
     reader.read_exact(&mut buf).await?;
-    println!("[v] got payload ({} bytes)", len);
+    println!("[v] got payload (len: {}KB, size: {}kb)", len / 1024, buf.len() / 1024);
     Ok(buf)
 }
 
@@ -33,6 +33,6 @@ where
     writer.write_all(&len_bytes).await?;
     writer.write_all(data).await?;
     writer.flush().await?;
-    println!("[v] sent payload ({} bytes)", data.len());
+    println!("[v] sent payload (size: {}KB)", data.len() / 1024);
     Ok(())
 }

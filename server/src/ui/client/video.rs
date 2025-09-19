@@ -53,8 +53,9 @@ pub fn render(
                 if let Some(pos) = pointer_pos {
                     let should_update_position = match input_state.last_update {
                         Some(last)
-                            if Instant::now().duration_since(last) < Duration::from_millis(50) =>
+                            if Instant::now().duration_since(last) < Duration::from_millis(100) =>
                         {
+                            println!("[*] I REFUSE TO SEND THIS UPDATE");
                             false
                         }
                         _ => true,
@@ -75,8 +76,8 @@ pub fn render(
                                     if *repeat {
                                         return;
                                     };
-                                    println!("{}", key.name());
-                                    println!("{:?}", modifiers);
+                                    //println!("{}", key.name());
+                                    //println!("{:?}", modifiers);
 
                                     let _ = sender.send(UiManagerCommand::SendCommand(
                                         mutex.clone(),
@@ -117,6 +118,7 @@ pub fn render(
                             if mouse_pos != (last_x, last_y) {
                                 input_state.last_position = Some(mouse_pos);
                                 // println!("move mouse to {}x{}", mouse_pos.0, mouse_pos.1);
+                                println!("[*] sent an update");
                                 let _ = sender.send(UiManagerCommand::SendCommand(
                                     mutex.clone(),
                                     Command::Input(InputType::MouseMove(mouse_pos)),
@@ -201,7 +203,7 @@ pub fn render(
         let max_scale_for_space =
             (available_size.x / image_size.x).min(available_size.y / image_size.y) * 0.95;
         let max_scale = if capture.quality == CaptureQuality::Quality {
-            max_scale_for_space.max(2.0)
+            max_scale_for_space.max(capture.max_scale)
         } else {
             max_scale_for_space.max(1.0)
         };
