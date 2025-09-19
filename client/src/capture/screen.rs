@@ -151,7 +151,12 @@ impl CaptureHandler {
     }
 }
 
-pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: CaptureQuality) {
+pub fn main(
+    id: u64,
+    tx: Sender<Vec<u8>>,
+    running: Arc<AtomicBool>,
+    quality: CaptureQuality,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Set DPI awareness to system aware
     #[cfg(windows)]
     unsafe {
@@ -161,12 +166,12 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
     }
 
     // Get the primary monitor
-    let monitor = Monitor::primary().expect("Failed to get primary monitor");
+    let monitor = Monitor::primary().map_err(|e| e.to_string())?;
 
     // Get monitor dimensions for calculating target size
     let (width, height) = (
-        monitor.width().unwrap() as usize,
-        monitor.height().unwrap() as usize,
+        monitor.width().map_err(|e| e.to_string())? as usize,
+        monitor.height().map_err(|e| e.to_string())? as usize,
     );
 
     let mut resize_factor = 4.0;
@@ -201,14 +206,8 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
     );
 
     // Start capture session
-    match CaptureHandler::start(settings) {
-        Ok(_) => {
-            println!("[*] Screen capture session completed successfully");
-        }
-        Err(e) => {
-            eprintln!("[!] Failed to run capture session: {}", e);
-        }
-    }
-
+    CaptureHandler::start(settings)?;
     println!("[*] capturer should be dropped now!!");
+
+    Ok(())
 }

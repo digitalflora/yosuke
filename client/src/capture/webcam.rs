@@ -1,4 +1,4 @@
-// god bless claude's little cototn socks
+// god bless claude's little cotton socks
 use nokhwa::{
     Camera, NokhwaError,
     pixel_format::RgbAFormat,
@@ -17,19 +17,18 @@ use crate::{
     handler::send,
 };
 
-pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: CaptureQuality) {
+pub fn main(
+    id: u64,
+    tx: Sender<Vec<u8>>,
+    running: Arc<AtomicBool>,
+    quality: CaptureQuality,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Query available cameras with error handling
-    let cameras = match nokhwa::query(nokhwa::utils::ApiBackend::Auto) {
-        Ok(cameras) => cameras,
-        Err(e) => {
-            eprintln!("[!] Failed to query cameras: {}", e);
-            return;
-        }
-    };
+    let cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto)
+        .map_err(|e| format!("Failed to query cameras: {}", e))?;
 
     if cameras.is_empty() {
-        eprintln!("[!] No cameras found");
-        return;
+        return Err("No cameras found".into());
     }
 
     let index = CameraIndex::Index(0);
@@ -37,27 +36,23 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
         RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
 
     // Create camera with error handling
-    let mut camera = match Camera::new(index, requested) {
-        Ok(camera) => camera,
-        Err(e) => {
-            eprintln!("[!] Failed to create camera: {}", e);
-            match e {
-                NokhwaError::OpenDeviceError(msg, _) => {
-                    eprintln!("[!] Camera might be in use by another application: {}", msg);
-                }
-                NokhwaError::GetPropertyError { property, error } => {
-                    eprintln!(
-                        "[!] Failed to get camera property '{}': {}",
-                        property, error
-                    );
-                }
-                _ => {
-                    eprintln!("[!] Camera initialization failed with unexpected error");
-                }
+    let mut camera = Camera::new(index, requested).map_err(|e| {
+        match &e {
+            NokhwaError::OpenDeviceError(msg, _) => {
+                eprintln!("[!] Camera might be in use by another application: {}", msg);
             }
-            return;
+            NokhwaError::GetPropertyError { property, error } => {
+                eprintln!(
+                    "[!] Failed to get camera property '{}': {}",
+                    property, error
+                );
+            }
+            _ => {
+                eprintln!("[!] Camera initialization failed with unexpected error");
+            }
         }
-    };
+        format!("Failed to create camera: {}", e)
+    })?;
 
     // Open camera stream with retry logic for busy camera
     let mut retry_count = 0;
@@ -73,7 +68,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
             Err(e) => {
                 eprintln!("[!] Failed to open camera stream: {}", e);
 
-                match e {
+                match &e {
                     NokhwaError::OpenStreamError(msg) => {
                         if msg.contains("busy")
                             || msg.contains("in use")
@@ -92,12 +87,10 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                                 std::thread::sleep(RETRY_DELAY);
                                 continue;
                             } else {
-                                eprintln!("[!] Max retries reached. Camera remains busy.");
-                                return;
+                                return Err("Max retries reached. Camera remains busy.".into());
                             }
                         } else {
-                            eprintln!("[!] Stream error: {}", msg);
-                            return;
+                            return Err(format!("Stream error: {}", msg).into());
                         }
                     }
                     NokhwaError::SetPropertyError {
@@ -105,15 +98,14 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                         value,
                         error,
                     } => {
-                        eprintln!(
-                            "[!] Failed to set property '{}' to '{}': {}",
+                        return Err(format!(
+                            "Failed to set property '{}' to '{}': {}",
                             property, value, error
-                        );
-                        return;
+                        )
+                        .into());
                     }
                     _ => {
-                        eprintln!("[!] Unexpected error opening stream");
-                        return;
+                        return Err("Unexpected error opening stream".into());
                     }
                 }
             }
@@ -172,8 +164,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                             eprintln!("[!] Failed to decode MJPEG frame: {}", e);
                             consecutive_errors += 1;
                             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                                eprintln!("[!] Too many consecutive decode errors, stopping");
-                                break;
+                                return Err("Too many consecutive decode errors".into());
                             }
                             continue;
                         }
@@ -239,11 +230,10 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                     consecutive_errors, MAX_CONSECUTIVE_ERRORS, e
                 );
 
-                match e {
+                match &e {
                     NokhwaError::ReadFrameError(msg) => {
                         if msg.contains("busy") || msg.contains("disconnected") {
-                            eprintln!("[!] Camera became unavailable during capture");
-                            break;
+                            return Err("Camera became unavailable during capture".into());
                         }
                     }
                     NokhwaError::GetPropertyError { property, error } => {
@@ -255,8 +245,7 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                 }
 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                    eprintln!("[!] Too many consecutive frame errors, stopping capture");
-                    break;
+                    return Err("Too many consecutive frame errors".into());
                 }
 
                 // Brief pause before retrying
@@ -264,4 +253,6 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
             }
         }
     }
+
+    Ok(())
 }

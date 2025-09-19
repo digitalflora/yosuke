@@ -92,12 +92,34 @@ pub fn main(
                     match capture_type {
                         CaptureType::Screen => {
                             if let Some(running) = capture_running {
-                                capture::screen::main(command.id, tx, running, quality);
+                                let tx_clone = tx.clone();
+                                if let Err(err) =
+                                    capture::screen::main(command.id, tx_clone, running, quality)
+                                {
+                                    send(
+                                        BaseResponse {
+                                            id: command.id,
+                                            response: Response::Error(err.to_string()),
+                                        },
+                                        &tx,
+                                    );
+                                };
                             }
                         }
                         CaptureType::Camera => {
                             if let Some(running) = capture_running {
-                                capture::webcam::main(command.id, tx, running, quality);
+                                let tx_clone = tx.clone();
+                                if let Err(err) =
+                                    capture::webcam::main(command.id, tx_clone, running, quality)
+                                {
+                                    send(
+                                        BaseResponse {
+                                            id: command.id,
+                                            response: Response::Error(err.to_string()),
+                                        },
+                                        &tx,
+                                    );
+                                };
                             }
                         }
                         _ => { /* not done!! */ }
