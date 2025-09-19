@@ -22,6 +22,43 @@ pub fn render(
     capturing: &mut bool,
     texture: &mut Option<TextureHandle>,
 ) {
+    //////////////////////////////////////
+    // quality toggle
+    ui.add_enabled_ui(!*capturing, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Quality: ");
+            ui.radio_value(&mut capture.quality, CaptureQuality::Quality, "Slow");
+            ui.radio_value(&mut capture.quality, CaptureQuality::Speed, "Fast");
+        });
+    });
+
+    if let Some(ref image_data) = capture.data {
+        let available_size = ui.available_size();
+        let image_size = egui::Vec2::new(image_data.width() as f32, image_data.height() as f32);
+
+        let min_scale = 0.1;
+        let max_scale_for_space =
+            (available_size.x / image_size.x).min(available_size.y / image_size.y) * 0.95;
+        let max_scale = if capture.quality == CaptureQuality::Quality {
+            max_scale_for_space.max(2.0)
+        } else {
+            max_scale_for_space.max(1.0)
+        };
+
+        ui.add(
+            Slider::new(&mut capture.scale, min_scale..=max_scale)
+                .text("Scale")
+                .step_by(0.05),
+        );
+    } else {
+        let max_scale = if capture.quality == CaptureQuality::Quality {
+            capture.max_scale
+        } else {
+            1.0
+        };
+        ui.add(Slider::new(&mut capture.scale, 0.25..=max_scale).text("Scale"));
+    }
+
     if let Some(ref image) = capture.data {
         if texture.is_none() {
             *texture = Some(ui.ctx().load_texture(
@@ -34,24 +71,10 @@ pub fn render(
             let available_size = ui.available_size();
             let image_size = texture.size_vec2();
 
-            // Define maximum display dimensions
-            const MAX_DISPLAY_WIDTH: f32 = 960.0;
-            const MAX_DISPLAY_HEIGHT: f32 = 720.0;
-
-            // Calculate scale limits based on available space
             let max_scale_x = available_size.x / image_size.x;
             let max_scale_y = available_size.y / image_size.y;
-            let max_scale_for_space = (max_scale_x.min(max_scale_y) * 0.9).max(0.1);
-
-            // Calculate scale limits based on maximum display dimensions
-            let max_scale_for_width = MAX_DISPLAY_WIDTH / image_size.x;
-            let max_scale_for_height = MAX_DISPLAY_HEIGHT / image_size.y;
-            let max_scale_for_dimensions = max_scale_for_width.min(max_scale_for_height);
-
-            // Use the most restrictive scale limit
-            let max_reasonable_scale = max_scale_for_space.min(max_scale_for_dimensions).max(2.0);
-
-            capture.scale = capture.scale.clamp(0.1, max_reasonable_scale);
+            let max_reasonable_scale = (max_scale_x.min(max_scale_y) * 0.9).max(0.1);
+            capture.scale = capture.scale.clamp(0.1, max_reasonable_scale.max(2.0));
 
             let display_size = image_size * capture.scale;
 
@@ -67,9 +90,8 @@ pub fn render(
                 if let Some(pos) = pointer_pos {
                     let should_update_position = match input_state.last_update {
                         Some(last)
-                            if Instant::now().duration_since(last) < Duration::from_millis(100) =>
+                            if Instant::now().duration_since(last) < Duration::from_millis(50) =>
                         {
-                            println!("[*] I REFUSE TO SEND THIS UPDATE");
                             false
                         }
                         _ => true,
@@ -90,8 +112,8 @@ pub fn render(
                                     if *repeat {
                                         return;
                                     };
-                                    //println!("{}", key.name());
-                                    //println!("{:?}", modifiers);
+                                    println!("{}", key.name());
+                                    println!("{:?}", modifiers);
 
                                     let _ = sender.send(UiManagerCommand::SendCommand(
                                         mutex.clone(),
@@ -132,7 +154,6 @@ pub fn render(
                             if mouse_pos != (last_x, last_y) {
                                 input_state.last_position = Some(mouse_pos);
                                 // println!("move mouse to {}x{}", mouse_pos.0, mouse_pos.1);
-                                println!("[*] sent an update");
                                 let _ = sender.send(UiManagerCommand::SendCommand(
                                     mutex.clone(),
                                     Command::Input(InputType::MouseMove(mouse_pos)),
@@ -197,54 +218,5 @@ pub fn render(
             ));
             *capturing = true;
         };
-    }
-
-    //////////////////////////////////////
-    // quality toggle
-    ui.add_enabled_ui(!*capturing, |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Quality: ");
-            ui.radio_value(&mut capture.quality, CaptureQuality::Quality, "Slow");
-            ui.radio_value(&mut capture.quality, CaptureQuality::Speed, "Fast");
-        });
-    });
-
-    if let Some(ref image_data) = capture.data {
-        let available_size = ui.available_size();
-        let image_size = egui::Vec2::new(image_data.width() as f32, image_data.height() as f32);
-
-        let min_scale = 0.1;
-
-        // Calculate max scale based on available space
-        let max_scale_for_space =
-            (available_size.x / image_size.x).min(available_size.y / image_size.y) * 0.95;
-
-        // Calculate max scale based on display dimension limits
-        const MAX_DISPLAY_WIDTH: f32 = 960.0;
-        const MAX_DISPLAY_HEIGHT: f32 = 720.0;
-        let max_scale_for_width = MAX_DISPLAY_WIDTH / image_size.x;
-        let max_scale_for_height = MAX_DISPLAY_HEIGHT / image_size.y;
-        let max_scale_for_dimensions = max_scale_for_width.min(max_scale_for_height);
-
-        let max_scale = if capture.quality == CaptureQuality::Quality {
-            max_scale_for_space
-                .min(max_scale_for_dimensions)
-                .max(capture.max_scale)
-        } else {
-            max_scale_for_space.min(max_scale_for_dimensions).max(1.0)
-        };
-
-        ui.add(
-            Slider::new(&mut capture.scale, min_scale..=max_scale)
-                .text("Scale")
-                .step_by(0.05),
-        );
-    } else {
-        let max_scale = if capture.quality == CaptureQuality::Quality {
-            capture.max_scale
-        } else {
-            1.0
-        };
-        ui.add(Slider::new(&mut capture.scale, 0.25..=max_scale).text("Scale"));
     }
 }
