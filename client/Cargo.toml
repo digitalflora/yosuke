@@ -8,12 +8,12 @@ shared = { path = "../shared" }
 bincode = "2.0.1"
 smol = "2.0.2"
 aes-gcm = "0.10.3"
-scrap = "0.5.0"
 image = "0.25.8"
 jpeg-encoder = "0.6.1"
 is_elevated = "0.1.2"
 enigo = "0.6.1"
 nokhwa = { version = "0.10.9", features = ["input-native"] }
+windows-capture = "1.5.0"
 
 
 [target.'cfg(windows)'.dependencies]

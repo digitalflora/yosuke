@@ -2,8 +2,8 @@ use std::f32;
 
 use crate::{manager::types::UiManagerCommand, ui::client::types::*};
 use egui::{
-    AtomExt, Button, CollapsingHeader, Color32, Context, Frame, Id, Margin, Resize, RichText,
-    ScrollArea, Stroke, TextEdit, TextStyle, Window,
+    Button, CollapsingHeader, Color32, Context, Frame, Id, Margin, Resize, RichText, ScrollArea,
+    Stroke, TextEdit, TextStyle, Window,
 };
 use shared::commands::{
     CaptureQuality, CaptureType, Command, ComputerInfoResponse, MessageBoxArgs,
