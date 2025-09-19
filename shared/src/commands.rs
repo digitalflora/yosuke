@@ -44,7 +44,7 @@ pub enum CapturePacket {
 pub enum Command {
     ComputerInfo,
     Elevate,
-    PowerShell(String), // string is the command
+    PowerShell(String, bool /* run on powershell */), // string is the command
     MessageBox(MessageBoxArgs),
     Capture(CaptureCommand, CaptureType),
     Input(InputType),

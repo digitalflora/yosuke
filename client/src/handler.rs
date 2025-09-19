@@ -58,11 +58,11 @@ pub fn main(
                 &tx,
             );
         }
-        Command::PowerShell(cmd) => {
+        Command::PowerShell(cmd, powershell) => {
             send(
                 BaseResponse {
                     id: command.id,
-                    response: powershell::main(cmd),
+                    response: powershell::main(cmd, powershell),
                 },
                 &tx,
             );
