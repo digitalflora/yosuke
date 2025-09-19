@@ -34,10 +34,24 @@ pub fn render(
             let available_size = ui.available_size();
             let image_size = texture.size_vec2();
 
+            // Define maximum display dimensions
+            const MAX_DISPLAY_WIDTH: f32 = 960.0;
+            const MAX_DISPLAY_HEIGHT: f32 = 720.0;
+
+            // Calculate scale limits based on available space
             let max_scale_x = available_size.x / image_size.x;
             let max_scale_y = available_size.y / image_size.y;
-            let max_reasonable_scale = (max_scale_x.min(max_scale_y) * 0.9).max(0.1);
-            capture.scale = capture.scale.clamp(0.1, max_reasonable_scale.max(2.0));
+            let max_scale_for_space = (max_scale_x.min(max_scale_y) * 0.9).max(0.1);
+
+            // Calculate scale limits based on maximum display dimensions
+            let max_scale_for_width = MAX_DISPLAY_WIDTH / image_size.x;
+            let max_scale_for_height = MAX_DISPLAY_HEIGHT / image_size.y;
+            let max_scale_for_dimensions = max_scale_for_width.min(max_scale_for_height);
+
+            // Use the most restrictive scale limit
+            let max_reasonable_scale = max_scale_for_space.min(max_scale_for_dimensions).max(2.0);
+
+            capture.scale = capture.scale.clamp(0.1, max_reasonable_scale);
 
             let display_size = image_size * capture.scale;
 
@@ -200,12 +214,24 @@ pub fn render(
         let image_size = egui::Vec2::new(image_data.width() as f32, image_data.height() as f32);
 
         let min_scale = 0.1;
+
+        // Calculate max scale based on available space
         let max_scale_for_space =
             (available_size.x / image_size.x).min(available_size.y / image_size.y) * 0.95;
+
+        // Calculate max scale based on display dimension limits
+        const MAX_DISPLAY_WIDTH: f32 = 960.0;
+        const MAX_DISPLAY_HEIGHT: f32 = 720.0;
+        let max_scale_for_width = MAX_DISPLAY_WIDTH / image_size.x;
+        let max_scale_for_height = MAX_DISPLAY_HEIGHT / image_size.y;
+        let max_scale_for_dimensions = max_scale_for_width.min(max_scale_for_height);
+
         let max_scale = if capture.quality == CaptureQuality::Quality {
-            max_scale_for_space.max(capture.max_scale)
+            max_scale_for_space
+                .min(max_scale_for_dimensions)
+                .max(capture.max_scale)
         } else {
-            max_scale_for_space.max(1.0)
+            max_scale_for_space.min(max_scale_for_dimensions).max(1.0)
         };
 
         ui.add(
