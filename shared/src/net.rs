@@ -11,7 +11,7 @@ where
     // println!("got length of payload: {}", usize::from_le_bytes(len_buf));
     let len = usize::from_le_bytes(len_buf);
 
-    if len > 64 * 1024 * 1024 {
+    if len > 128 * 1024 * 1024 {
         println!("[x] dropping super huge payload");
         return Err(std::io::Error::new(
             std::io::ErrorKind::FileTooLarge,
@@ -21,7 +21,7 @@ where
 
     let mut buf = vec![0u8; len];
     reader.read_exact(&mut buf).await?;
-    //println!("got payload");
+    println!("[v] got payload ({} bytes)", len);
     Ok(buf)
 }
 
@@ -33,5 +33,6 @@ where
     writer.write_all(&len_bytes).await?;
     writer.write_all(data).await?;
     writer.flush().await?;
+    println!("[v] sent payload ({} bytes)", data.len());
     Ok(())
 }
