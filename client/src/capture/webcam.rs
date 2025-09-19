@@ -138,9 +138,21 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
         };
     }
 
+    let mut buf = Vec::new();
+    let mut rgb_buf = Vec::new();
+
     loop {
         if !running.load(Ordering::SeqCst) {
-            println!("[v] signal to stop capturing! breaking loop");
+            println!(
+                "[v] signal to stop capturing! shutting capture, clearing buffer, breaking loop"
+            );
+            // mop up part 6: the heart
+            drop(buf);
+            drop(rgb_buf);
+            if let Err(e) = camera.stop_stream() {
+                eprintln!("[!] Error stopping camera stream: {}", e);
+            }
+            drop(camera); // fakemink kill everything
             break;
         }
 
@@ -149,14 +161,12 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                 println!("[*] got camera frame");
                 consecutive_errors = 0; // Reset error counter on success
 
-                let (width, height, mut buffer) = if frame.source_frame_format()
-                    == FrameFormat::MJPEG
-                {
+                let (width, height) = if frame.source_frame_format() == FrameFormat::MJPEG {
                     println!("[*] frame was MJPEG");
                     match image::load_from_memory(frame.buffer()) {
                         Ok(image) => {
-                            let buffer = image.to_rgba8().into_raw();
-                            (image.width(), image.height(), buffer)
+                            buf = image.to_rgba8().into_raw();
+                            (image.width(), image.height())
                         }
                         Err(e) => {
                             eprintln!("[!] Failed to decode MJPEG frame: {}", e);
@@ -170,12 +180,13 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                     }
                 } else {
                     println!("[*] frame was not MJPEG");
-                    let (width, height) = (frame.resolution().width(), frame.resolution().height());
-                    (width, height, frame.buffer().to_vec())
+                    buf.clear();
+                    buf.extend_from_slice(frame.buffer());
+                    (frame.resolution().width(), frame.resolution().height())
                 };
 
                 // The jpeg encoder expects BGRA, but nokhwa provides RGBA. Swap R and B.
-                for chunk in buffer.chunks_mut(4) {
+                for chunk in buf.chunks_mut(4) {
                     if chunk.len() == 4 {
                         chunk.swap(0, 2);
                     }
@@ -199,13 +210,14 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                 }
 
                 let packet = encode_fast(
-                    buffer,
+                    &buf,
                     FrameSize { width, height },
                     FrameSize {
                         width: target_width as u32,
                         height: target_height as u32,
                     },
                     jpeg_quality,
+                    &mut rgb_buf,
                 );
 
                 println!("[*] sending response");
@@ -251,11 +263,5 @@ pub fn main(id: u64, tx: Sender<Vec<u8>>, running: Arc<AtomicBool>, quality: Cap
                 std::thread::sleep(Duration::from_millis(100));
             }
         }
-    }
-
-    // Cleanup
-    println!("[*] Stopping camera capture and cleaning up");
-    if let Err(e) = camera.stop_stream() {
-        eprintln!("[!] Error stopping camera stream: {}", e);
     }
 }

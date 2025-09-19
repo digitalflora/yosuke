@@ -7,17 +7,25 @@ pub struct FrameSize {
     pub height: u32,
 }
 
-pub fn encode_fast(frame: Vec<u8>, from: FrameSize, to: FrameSize, quality: u8) -> VideoPacket {
-    let rgb: Vec<u8> = frame
-        .chunks(4)
-        .flat_map(|bgra| [bgra[2], bgra[1], bgra[0]])
-        .collect();
+pub fn encode_fast(
+    frame: &[u8],
+    from: FrameSize,
+    to: FrameSize,
+    quality: u8,
+    rgb_buffer: &mut Vec<u8>,
+) -> VideoPacket {
+    rgb_buffer.clear();
+    rgb_buffer.extend(
+        frame
+            .chunks_exact(4)
+            .flat_map(|bgra| [bgra[2], bgra[1], bgra[0]]),
+    );
 
-    let img = ImageBuffer::<Rgb<u8>, _>::from_raw(from.width, from.height, rgb).unwrap();
+    let img = ImageBuffer::<Rgb<u8>, _>::from_raw(from.width, from.height, rgb_buffer.clone()).unwrap();
     let final_img = if to.width != from.width || to.height != from.height {
         image::imageops::resize(&img, to.width, to.height, FilterType::Nearest)
     } else {
-        img
+        img.clone()
     };
 
     let mut jpeg_data = Vec::new();

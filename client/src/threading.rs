@@ -38,11 +38,17 @@ impl ActiveCommands {
         // stop capturing
         if let Command::Capture(CaptureCommand::Stop, capture_type) = &command.command {
             let mut captures = self.captures.lock().await;
-            if let Some(task_state) = captures.remove(capture_type) {
+            if let Some(task_state) = captures.get(capture_type) {
                 task_state.active.store(false, Ordering::SeqCst);
-                let mut tasks = self.tasks.lock().await;
-                if let Some(task) = tasks.remove(&task_state.id) {
-                    task.cancel().await;
+
+                let task = {
+                    let mut tasks = self.tasks.lock().await;
+                    tasks.remove(&task_state.id)
+                };
+
+                if let Some(task) = task {
+                    task.cancel().await; // wait for task to stop
+                    captures.remove(capture_type);
                 }
             }
             return;
@@ -101,20 +107,12 @@ impl ActiveCommands {
         }
 
         // handle capture in here because i don't want to move shit to another thread, that's looong
-        let captures = self.captures.clone();
-        let command_clone = command.command.clone();
         let tx_clone = tx.clone();
         let handle = smol::spawn(async move {
             smol::unblock(move || handler::main(command, tx_clone, running)).await;
-            // cleanup after running the capture loop
-            if let Command::Capture(CaptureCommand::Start(_), capture_type) = &command_clone {
-                let mut captures = captures.lock().await;
-                captures.remove(capture_type);
-            }
 
-            let mut lock = tasks.lock().await;
-            lock.remove(&id);
-            println!("[*] task finished");
+            let mut tasks = tasks.lock().await;
+            tasks.remove(&id);
         });
         let mut lock = self.tasks.lock().await;
         lock.insert(id, handle);

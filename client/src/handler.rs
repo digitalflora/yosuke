@@ -8,15 +8,20 @@ use crate::{
 };
 
 pub fn send(response: BaseResponse, tx: &Sender<Vec<u8>>) {
-    match tx.try_send(bincode::encode_to_vec(response, bincode::config::standard()).unwrap()) {
-        Ok(_) => {
-            // println!("[x] sent frame");
-        }
-        Err(smol::channel::TrySendError::Full(_)) => {
-            println!("[x] congested, dropped response");
-        }
-        Err(smol::channel::TrySendError::Closed(_)) => {
-            println!("[x] channel closed");
+    match bincode::encode_to_vec(response, bincode::config::standard()) {
+        Ok(req) => match tx.try_send(req) {
+            Ok(_) => {
+                // println!("[x] sent frame");
+            }
+            Err(smol::channel::TrySendError::Full(_)) => {
+                println!("[x] congested, dropped response");
+            }
+            Err(smol::channel::TrySendError::Closed(_)) => {
+                println!("[x] channel closed");
+            }
+        },
+        Err(e) => {
+            println!("[x] bincode failed to encode: {}", e);
         }
     };
 }
