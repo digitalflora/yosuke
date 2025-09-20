@@ -83,7 +83,7 @@ impl ActiveCommands {
 
         // start capturing
         let mut running: Option<Arc<AtomicBool>> = None;
-        if let Command::Capture(CaptureCommand::Start(_), capture_type) = &command.command {
+        if let Command::Capture(CaptureCommand::Start(_, _), capture_type) = &command.command {
             let mut captures = self.captures.lock().await;
             if captures.contains_key(capture_type) {
                 let refusal = bincode::encode_to_vec(

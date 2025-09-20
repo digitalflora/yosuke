@@ -87,14 +87,14 @@ pub fn main(
         ),
         Command::Capture(capture_command, capture_type) => {
             match capture_command {
-                CaptureCommand::Start(quality) => {
+                CaptureCommand::Start(device, quality) => {
                     ////////////////////////////
                     match capture_type {
                         CaptureType::Screen => {
                             if let Some(running) = capture_running {
                                 let tx_clone = tx.clone();
                                 if let Err(err) =
-                                    capture::screen::main(command.id, tx_clone, running, quality)
+                                    capture::screen::main(command.id, tx_clone, running, quality, device)
                                 {
                                     send(
                                         BaseResponse {
@@ -110,7 +110,7 @@ pub fn main(
                             if let Some(running) = capture_running {
                                 let tx_clone = tx.clone();
                                 if let Err(err) =
-                                    capture::webcam::main(command.id, tx_clone, running, quality)
+                                    capture::webcam::main(command.id, tx_clone, running, quality, device)
                                 {
                                     send(
                                         BaseResponse {

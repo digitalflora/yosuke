@@ -15,6 +15,8 @@ pub struct ClientViewState {
     pub windows: ClientWindowState,
     pub powershell: PowerShellView,
     pub input: ClientViewInputState,
+    pub selected_monitor: u32,
+    pub selected_webcam: u32,
     pub captures: ClientViewCaptures,
     pub textures: ClientViewTextures,
     pub capturing: ClientViewCaptureState,
@@ -42,6 +44,8 @@ impl ClientView {
             socket: socket,
             state: ClientViewState {
                 //visible: false,
+                selected_monitor: 0,
+                selected_webcam: 0,
                 windows: ClientWindowState::default(),
                 input: ClientViewInputState {
                     active: false,

@@ -1,9 +1,10 @@
 use std::time::Instant;
 
 use egui::{ColorImage, TextureHandle};
-use shared::commands::CaptureQuality;
+use shared::commands::{CaptureQuality, MessageBoxIcon};
 
 pub struct MsgboxView {
+    pub icon: MessageBoxIcon,
     pub title: String,
     pub text: String,
 }
@@ -15,6 +16,7 @@ pub struct PowerShellView {
 impl Default for MsgboxView {
     fn default() -> Self {
         Self {
+            icon: MessageBoxIcon::Info,
             title: String::from("Title"),
             text: String::from("Text"),
         }

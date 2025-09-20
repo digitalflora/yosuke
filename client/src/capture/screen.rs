@@ -156,6 +156,7 @@ pub fn main(
     tx: Sender<Vec<u8>>,
     running: Arc<AtomicBool>,
     quality: CaptureQuality,
+    device: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Set DPI awareness to system aware
     #[cfg(windows)]
@@ -165,8 +166,12 @@ pub fn main(
         );
     }
 
-    // Get the primary monitor
-    let monitor = Monitor::primary().map_err(|e| e.to_string())?;
+    // Get the specified monitor
+    let monitors = Monitor::enumerate().map_err(|e| e.to_string())?;
+    let monitor = monitors
+        .into_iter()
+        .nth(device as usize)
+        .ok_or("Monitor not found")?;
 
     // Get monitor dimensions for calculating target size
     let (width, height) = (

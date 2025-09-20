@@ -22,6 +22,7 @@ pub fn main(
     tx: Sender<Vec<u8>>,
     running: Arc<AtomicBool>,
     quality: CaptureQuality,
+    device: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Query available cameras with error handling
     let cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto)
@@ -31,7 +32,7 @@ pub fn main(
         return Err("No cameras found".into());
     }
 
-    let index = CameraIndex::Index(0);
+    let index = CameraIndex::Index(device);
     let requested =
         RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
 

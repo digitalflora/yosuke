@@ -10,7 +10,7 @@ pub enum CaptureQuality {
 
 #[derive(Encode, Decode, Clone)]
 pub enum CaptureCommand {
-    Start(CaptureQuality),
+    Start(u32, CaptureQuality),
     Stop,
 }
 #[derive(Encode, Decode, PartialEq, Eq, Hash, Clone)] // thats a lot
@@ -49,8 +49,16 @@ pub enum Command {
     Capture(CaptureCommand, CaptureType),
     Input(InputType),
 }
+
+#[derive(Encode, Decode, Clone, PartialEq)]
+pub enum MessageBoxIcon {
+    Info,
+    Warning,
+    Error,
+}
 #[derive(Encode, Decode, Clone)]
 pub struct MessageBoxArgs {
+    pub icon: MessageBoxIcon,
     pub title: String,
     pub text: String,
 }
@@ -66,6 +74,8 @@ pub enum Response {
 pub struct ComputerInfoResponse {
     pub hostname: String,
     pub elevated: bool, // did the client launch as admin
+    pub monitors: Vec<String>,
+    pub cameras: Vec<String>,
 }
 
 #[derive(Encode, Decode)]
