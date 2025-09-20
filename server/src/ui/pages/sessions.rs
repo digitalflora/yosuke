@@ -45,6 +45,13 @@ fn menu(view: &mut ClientView, ui: &mut Ui) -> () {
                 .store(true, std::sync::atomic::Ordering::Relaxed);
         };
     });
+    ui.menu_button("🛜 Connection", |ui| {
+        if ui.button("✖  Disconnect").clicked() {
+            let _ = view
+                .sender
+                .send(UiManagerCommand::Disconnect(view.mutex.clone()));
+        };
+    });
 }
 
 pub fn render(view: &mut View, ui: &mut Ui) -> () {

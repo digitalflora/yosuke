@@ -9,12 +9,11 @@
 
 # detailing Yosuke
 ## current features
-- screenshot of client
-- - automatic update at ~3fps
-- send MessageBox
+- screen/webcam capture
+- - jank screen control. mouse is ok, keyboard is genuinely HORRIBLE
+- messagebox
+- shell (powershell/cmd)
 - disconnect
-## future features
-- audio capture
 ## server
 - relies on egui/eframe for the interface
 - relies on tokio for networking and threading
