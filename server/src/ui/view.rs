@@ -6,10 +6,7 @@ use egui_notify::Toasts;
 
 use crate::{
     types::mouthpieces::UiMouthpiece,
-    ui::{
-        client::{self, ClientView},
-        pages, switcher, updates,
-    },
+    ui::{client::ClientView, pages, switcher, updates},
 };
 
 pub struct ViewBuilderSettings {
@@ -75,12 +72,6 @@ impl App for View {
         updates::manager(self, ctx);
 
         switcher::render(self, ctx);
-
-        for (_index, client) in self.state.clients.iter_mut().enumerate() {
-            if client.1.state.visible {
-                client::render(ctx, client.1);
-            }
-        }
 
         CentralPanel::default().show(ctx, |ui| match &self.state.page {
             ViewPage::Sessions => {

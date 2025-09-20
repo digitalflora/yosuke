@@ -8,6 +8,7 @@ pub struct MsgboxView {
     pub text: String,
 }
 pub struct PowerShellView {
+    pub powershell: bool, // false for cmd
     pub input: String,
     pub output: String,
 }

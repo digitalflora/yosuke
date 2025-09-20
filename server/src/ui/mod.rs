@@ -7,7 +7,9 @@ mod client;
 mod pages;
 mod switcher;
 mod updates;
+pub mod video;
 mod view;
+mod windows;
 
 pub fn main(mouthpiece: UiMouthpiece) -> eframe::Result<()> {
     println!("[*] ui spawned");

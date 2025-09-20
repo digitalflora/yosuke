@@ -24,11 +24,35 @@ pub fn render(
 ) {
     //////////////////////////////////////
     // quality toggle
-    ui.add_enabled_ui(!*capturing, |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Quality: ");
-            ui.radio_value(&mut capture.quality, CaptureQuality::Quality, "Slow");
-            ui.radio_value(&mut capture.quality, CaptureQuality::Speed, "Fast");
+    ui.horizontal(|ui| {
+        if *capturing {
+            if ui.button("⏹  Stop").clicked() {
+                println!("[*] sending CaptureCommand::Stop");
+                let _ = sender.send(UiManagerCommand::SendCommand(
+                    mutex.clone(),
+                    Command::Capture(CaptureCommand::Stop, capture_type.clone()),
+                ));
+                *capturing = false;
+            }
+        } else {
+            if ui.button("▶  Start").clicked() {
+                println!("[*] sending CaptureCommand::Start");
+                let _ = sender.send(UiManagerCommand::SendCommand(
+                    mutex.clone(),
+                    Command::Capture(
+                        CaptureCommand::Start(capture.quality.clone()),
+                        capture_type.clone(),
+                    ),
+                ));
+                *capturing = true;
+            };
+        }
+        ui.add_enabled_ui(!*capturing, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Quality: ");
+                ui.radio_value(&mut capture.quality, CaptureQuality::Quality, "Slow");
+                ui.radio_value(&mut capture.quality, CaptureQuality::Speed, "Fast");
+            });
         });
     });
 
@@ -198,25 +222,5 @@ pub fn render(
                 }
             }
         }
-    }
-
-    if *capturing {
-        if ui.button("⏹  Stop").clicked() {
-            println!("[*] sending CaptureCommand::Stop");
-            let _ = sender.send(UiManagerCommand::SendCommand(
-                mutex.clone(),
-                Command::Capture(CaptureCommand::Stop, capture_type),
-            ));
-            *capturing = false;
-        }
-    } else {
-        if ui.button("▶  Start").clicked() {
-            println!("[*] sending CaptureCommand::Start");
-            let _ = sender.send(UiManagerCommand::SendCommand(
-                mutex.clone(),
-                Command::Capture(CaptureCommand::Start(capture.quality.clone()), capture_type),
-            ));
-            *capturing = true;
-        };
     }
 }

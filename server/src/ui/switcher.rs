@@ -1,6 +1,5 @@
-use egui::{Context, Frame, Margin, TopBottomPanel};
-
 use crate::ui::view::{View, ViewPage};
+use egui::{Align, Context, Frame, Layout, Margin, TopBottomPanel};
 
 pub fn render(view: &mut View, ctx: &Context) {
     TopBottomPanel::top("switcher").show(ctx, |ui| {
@@ -19,7 +18,12 @@ pub fn render(view: &mut View, ctx: &Context) {
                     if ui.button("🛠  Builder").clicked() {
                         view.state.page = ViewPage::Builder;
                     }
-                })
-        })
+                });
+
+            #[cfg(debug_assertions)]
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.label("⚠  Debug build");
+            });
+        });
     });
 }
