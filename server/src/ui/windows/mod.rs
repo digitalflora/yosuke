@@ -67,7 +67,7 @@ pub fn render(view: &mut ClientView, ui: &mut Ui) {
                 "Desktop [{}]",
                 view.info.hostname.trim_end_matches(char::from(0)) // stop it from cutting off
             ),
-            vec2(640.0, 480.0),
+            vec2(720.0, 480.0),
             screen::render,
             "screen",
         );
@@ -83,7 +83,7 @@ pub fn render(view: &mut ClientView, ui: &mut Ui) {
                 "Camera [{}]",
                 view.info.hostname.trim_end_matches(char::from(0)) // stop it from cutting off
             ),
-            vec2(640.0, 480.0),
+            vec2(640.0, 360.0),
             webcam::render,
             "webcam",
         );
